@@ -21,11 +21,12 @@ struct PS2EmulatorScene: App {
     var body: some Scene {
         WindowGroup(AppIdentity.displayName) {
             Group {
-                if preferences.hasAcceptedSafetyNotice {
+                if preferences.hasAcceptedRequiredNotices {
                     RootView(playGame: play)
                 } else {
                     FirstRunNoticeView {
                         preferences.hasAcceptedSafetyNotice = true
+                        preferences.hasAcceptedBundledDemoLicense = true
                     }
                 }
             }
@@ -35,7 +36,7 @@ struct PS2EmulatorScene: App {
                 .environment(\.locale, preferences.resolvedLanguage.locale)
                 .frame(minWidth: 920, minHeight: 600)
                 .onOpenURL(perform: handleOpenURL)
-                .onChange(of: preferences.hasAcceptedSafetyNotice) { _, accepted in
+                .onChange(of: preferences.hasAcceptedRequiredNotices) { _, accepted in
                     guard accepted, !pendingOpenURLs.isEmpty else { return }
                     library.add(urls: pendingOpenURLs)
                     pendingOpenURLs.removeAll()
@@ -48,13 +49,13 @@ struct PS2EmulatorScene: App {
                     library.showAddGamesPanel()
                 }
                 .keyboardShortcut("o", modifiers: .command)
-                .disabled(!preferences.hasAcceptedSafetyNotice)
+                .disabled(!preferences.hasAcceptedRequiredNotices)
 
                 Button(preferences.text("Add Game Folders…", "ゲームフォルダを追加…")) {
                     library.showAddFolderPanel(recursive: preferences.scanRecursively)
                 }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
-                .disabled(!preferences.hasAcceptedSafetyNotice)
+                .disabled(!preferences.hasAcceptedRequiredNotices)
             }
 
             CommandMenu(LocalizedStringKey(preferences.text("Game", "ゲーム"))) {
@@ -63,7 +64,7 @@ struct PS2EmulatorScene: App {
                 }
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(
-                    !preferences.hasAcceptedSafetyNotice
+                    !preferences.hasAcceptedRequiredNotices
                         || library.selectedGame == nil
                         || launcher.isRunning
                 )
@@ -80,12 +81,12 @@ struct PS2EmulatorScene: App {
                     library.rescan(recursive: preferences.scanRecursively)
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(!preferences.hasAcceptedSafetyNotice)
+                .disabled(!preferences.hasAcceptedRequiredNotices)
 
                 Button(preferences.text("Open Play! Settings", "Play! の設定を開く")) {
                     launchCoreSettings()
                 }
-                .disabled(!preferences.hasAcceptedSafetyNotice || launcher.isRunning)
+                .disabled(!preferences.hasAcceptedRequiredNotices || launcher.isRunning)
             }
         }
 
@@ -100,7 +101,7 @@ struct PS2EmulatorScene: App {
     }
 
     private func play(_ game: Game) {
-        guard preferences.hasAcceptedSafetyNotice else { return }
+        guard preferences.hasAcceptedRequiredNotices else { return }
         do {
             try launcher.launch(game: game, fullscreen: preferences.launchFullscreen) { id, elapsed in
                 library.recordPlayFinished(id, elapsed: elapsed)
@@ -112,7 +113,7 @@ struct PS2EmulatorScene: App {
     }
 
     private func launchCoreSettings() {
-        guard preferences.hasAcceptedSafetyNotice else { return }
+        guard preferences.hasAcceptedRequiredNotices else { return }
         do {
             try launcher.launchCoreSettings()
         } catch {
@@ -121,7 +122,7 @@ struct PS2EmulatorScene: App {
     }
 
     private func handleOpenURL(_ url: URL) {
-        if preferences.hasAcceptedSafetyNotice {
+        if preferences.hasAcceptedRequiredNotices {
             library.add(urls: [url])
         } else if !pendingOpenURLs.contains(url) {
             pendingOpenURLs.append(url)

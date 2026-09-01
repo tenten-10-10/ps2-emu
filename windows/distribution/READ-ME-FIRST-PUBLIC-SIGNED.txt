@@ -1,0 +1,57 @@
+PS2 Emu @VERSION@ for Windows (@ARCHITECTURE@)
+SIGNED PUBLIC RELEASE CANDIDATE
+DO NOT DISTRIBUTE UNTIL ALL HUMAN RELEASE GATES PASS
+
+The packaged PS2 Emu application sources were byte-matched to this clean public
+source revision before the launcher was signed:
+
+@SOURCE_REVISION@
+
+Before running it:
+
+- Download it only from the owner-approved PS2 Emu GitHub Release.
+- Compare the ZIP SHA-256 with the checksum published for the same release.
+- Open the properties of `PS2 Emu.exe` and confirm that Windows reports a valid
+  digital signature from the publisher named in that release. Do not continue
+  when the signature, publisher, timestamp, architecture, or checksum differs.
+- Do not bypass Microsoft Defender, SmartScreen, or Smart App Control. A valid
+  signature does not guarantee compatibility or remove the need for normal
+  Windows security checks.
+- This exact ZIP must still pass the owner-recorded Windows x64 or ARM64
+  real-hardware, browser-download, Defender, SmartScreen, Smart App Control,
+  standard-user, external Play!, controller, audio, save, stop, and relaunch
+  gates before it can be attached to a public Release.
+
+External Play! core boundary
+----------------------------
+
+- This ZIP includes exactly one playable fixture: the unmodified official
+  `ps2dev/ps2sdk` Cube Demo homebrew under AFL 2.0. It is stored outside
+  app.asar at `resources/PS2SDK-Cube-Demo/ps2sdk-cube.elf`, pinned to SHA-256
+  `1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584`,
+  and accompanied by the full AFL 2.0, provenance, newlib, GCC, and GCC runtime
+  exception notices. Final human review of those obligations remains a release
+  gate. This ZIP does not include Play.exe, Play!, Qt, states.db, a PlayStation
+  2 BIOS, commercial games, any other homebrew/ROM, encryption keys, or signing
+  credentials.
+- Users install the reviewed official Play! x64 build separately from
+  https://purei.org/downloads.php. PS2 Emu launches it as an independent
+  process and does not download, copy, patch, re-sign, or update it.
+- The reviewed Play! `0.77-7-g04bde0df` Windows build is itself unsigned.
+  PS2 Emu accepts it only when Play.exe and every required Qt file exactly match
+  the pinned SHA-256, size, x64 PE-machine, version, registry, and unsigned-state
+  evidence. This is hash-only byte identity, not verified publisher identity.
+  The launcher requires explicit consent for that exact identity.
+- The ARM64 package contains a native ARM64 PS2 Emu launcher, while the external
+  Play! process is x64 and uses Windows 11 on Arm x64 emulation. It is not an
+  ARM64-native Play! core.
+
+Use only game dumps you own and are legally permitted to use, or authorized
+homebrew. Except for the disclosed Cube Demo, no playable content is included.
+PS2 Emu is not affiliated with Sony Interactive Entertainment, PlayStation,
+ps2dev, or the Play! project.
+
+`SOURCE-REVISION.txt` records that reviewed PS2 Emu source commit. The reviewed
+unsigned ZIP SHA, application-source byte match, final ZIP checksum,
+Authenticode publisher, timestamp, platform, and source revision must all be
+treated as one release identity.

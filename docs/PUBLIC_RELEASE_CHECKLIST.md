@@ -23,11 +23,11 @@ The teaser site may be published as “coming soon” before the binary. Its pay
 - [x] arm64 and x86_64 public-candidate DMGs have architecture-specific names and thin matching outer executables
 - [x] Runtime strict-validation tests cover Bundle ID, version, Team ID, CDHash, signature, and architecture
 - [x] Runtime pins distinct official Play! CDHashes for arm64 and x86_64 execution
-- [x] No BIOS, game image, encryption key, game artwork, payment secret, or signing secret is included
+- [x] No BIOS, commercial game image, encryption key, copyrighted game artwork, payment secret, or signing secret is included; the exact authorized PS2SDK Cube Demo is the only homebrew exception
 - [x] Windows unit/static-security tests pass
 - [x] Windows x64 and ARM64 packages have distinct exact filenames and PE Machine values (`0x8664` / `0xAA64`)
 - [x] Windows packages contain a single launcher EXE, ASAR app, Electron/Chromium licenses and explicit unsigned warning
-- [x] Windows package verifier rejects Play.exe, Qt DLLs, states.db, games, BIOS, keys, unsafe ZIP paths and unexpected executables
+- [x] Windows package verifier rejects Play.exe, Qt DLLs, states.db, commercial games, every non-approved homebrew ELF, BIOS, keys, unsafe ZIP paths and unexpected executables
 - [x] Canonical four-target release manifest exists and keeps all unsigned artifacts, hashes, publishers, downloads and payments blocked
 - [x] Public-source allowlist, tracked/history denylist, source-archive checks and secret-free four-platform CI workflow are implemented
 - [x] Windows hash-only identity schema, fixed upstream evidence and runtime collector fail closed around the single approved `0.77-7-g04bde0df` x64 build; publisher remains explicitly unverified
@@ -36,6 +36,8 @@ The teaser site may be published as “coming soon” before the binary. Its pay
 - [ ] Public source is in a clean Git repository; explicit `SOURCE_REVISION` equals reviewed HEAD and is embedded in the app
 - [ ] Support, privacy, security, refund, and commercial-disclosure pages reviewed
 - [ ] Real graphical smoke test completed with the legal ps2sdk fixture
+- [ ] Human final license review confirms the exact statically linked Cube Demo ELF, AFL 2.0, newlib and GCC notice/source obligations are satisfied
+- [ ] AFL 2.0 text remains readable and the version-bound affirmative-assent gate is observed on all four final packages
 - [x] Exact reviewed Play! `0.77-7-g04bde0df` has an authentication-free official CI acquisition path; fixed S3 DMG SHA-256 and byte identity with Actions run `31526392870` verified on 2026-09-01
 - [ ] Separately installed official Play.app discovery and pinned strict validation completed on Apple Silicon and Intel Macs
 - [ ] Controller, audio, memory-card, save-state, stop, and relaunch flows tested on both target architectures

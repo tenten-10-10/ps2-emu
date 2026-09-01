@@ -11,6 +11,34 @@
   },
   "sourceRevision": null,
   "distributionMode": "external-core",
+  "bundledHomebrew": {
+    "id": "ps2sdk-cube-demo",
+    "displayName": "PS2SDK Cube Demo",
+    "kind": "open-source-homebrew-demo",
+    "commercialGame": false,
+    "filePath": "Resources/Fixtures/ps2sdk-cube.elf",
+    "byteSize": 174772,
+    "sha256": "1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584",
+    "license": "AFL-2.0",
+    "sourceRevision": "39a89923ce59152fa855250cfacaccf8e581a1eb",
+    "sourceURL": "https://github.com/ps2dev/ps2sdk/tree/39a89923ce59152fa855250cfacaccf8e581a1eb/ee/draw/samples/cube",
+    "upstreamActionsRun": 33232694254,
+    "upstreamArtifactName": "ps2sdk-samples-all-39a89923",
+    "upstreamArtifactSha256": "b2d3c6e46a9d6348da2442b9ad76a4486d1522d2c802bc885f3afdbffa1a61f2",
+    "toolchainContainerSha256": "e15fcc76f5ae2f450a8359f7541ae806535992099f5df39dd180698b3ef52508",
+    "noticePaths": [
+      "Resources/Fixtures/PS2SDK-CUBE-NOTICE.md",
+      "Resources/Fixtures/PS2SDK-AFL-2.0.txt",
+      "Resources/Fixtures/NEWLIB-COPYING.txt",
+      "Resources/Fixtures/GCC-COPYING.RUNTIME.txt",
+      "Resources/Fixtures/GCC-COPYING3.txt"
+    ],
+    "sourcePaths": [
+      "Resources/Fixtures/source/Makefile",
+      "Resources/Fixtures/source/cube.c",
+      "Resources/Fixtures/source/mesh_data.c"
+    ]
+  },
   "publicReleaseApproved": false,
   "gates": {
     "downloadsEnabled": false,
@@ -20,6 +48,9 @@
     "windowsStandardCorePolicyApproved": true,
     "windowsStandardCoreRuntimeIntegrationComplete": true,
     "windowsAuthenticodeComplete": false,
+    "bundledHomebrewTechnicalVerificationComplete": true,
+    "bundledHomebrewHumanLicenseReviewComplete": false,
+    "bundledHomebrewFunctionalEvidenceComplete": false,
     "cleanMachineEvidenceComplete": false,
     "realHardwareEvidenceComplete": false
   },

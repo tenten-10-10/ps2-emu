@@ -13,8 +13,10 @@ crash-reporting service.
 No public release exists yet. Version 0.1.0 artifacts are unsigned local
 verification candidates and must not be distributed as trusted downloads. All
 four planned public packages are external-core launchers: they do not include
-`Play.app`, `Play.exe`, Qt, MoltenVK, `states.db`, games, BIOS files, encryption
-keys, or copyrighted game artwork. Play! must be installed separately.
+`Play.app`, `Play.exe`, Qt, MoltenVK, `states.db`, commercial games, BIOS files,
+encryption keys, or copyrighted game artwork. They include only the separately
+licensed, hash-pinned PS2SDK Cube Demo as an open-source validation fixture.
+Play! must be installed separately.
 
 ## Data stored on your device
 

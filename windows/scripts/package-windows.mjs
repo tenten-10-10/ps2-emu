@@ -25,6 +25,16 @@ const privacySource = path.join(projectRoot, "PRIVACY.md");
 const securitySource = path.join(projectRoot, "SECURITY.md");
 const buildDirectory = path.join(windowsRoot, ".build");
 const previousPackagesDirectory = path.join(buildDirectory, "previous-windows-packages");
+const bundledDemoSha256 = "1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584";
+const bundledDemoSourceDirectory = path.join(projectRoot, "Resources", "Fixtures");
+const bundledDemoFiles = Object.freeze([
+  Object.freeze({ sourceName: "ps2sdk-cube.elf", packageName: "ps2sdk-cube.elf" }),
+  Object.freeze({ sourceName: "PS2SDK-AFL-2.0.txt", packageName: "PS2SDK-AFL-2.0.txt" }),
+  Object.freeze({ sourceName: "PS2SDK-CUBE-NOTICE.md", packageName: "PS2SDK-CUBE-NOTICE.md" }),
+  Object.freeze({ sourceName: "NEWLIB-COPYING.txt", packageName: "NEWLIB-COPYING.txt" }),
+  Object.freeze({ sourceName: "GCC-COPYING.RUNTIME.txt", packageName: "GCC-COPYING.RUNTIME.txt" }),
+  Object.freeze({ sourceName: "GCC-COPYING3.txt", packageName: "GCC-COPYING3.txt" }),
+]);
 
 function fail(message) {
   throw new Error(message);
@@ -37,6 +47,7 @@ async function assertAppSourceIsSafe() {
     "preload.cjs",
     "core-identity-manifest.json",
     path.join("lib", "core.mjs"),
+    path.join("lib", "bundled-demo.mjs"),
     path.join("lib", "core-identity.mjs"),
     path.join("lib", "windows-core-evidence.mjs"),
     path.join("lib", "store.mjs"),
@@ -74,6 +85,40 @@ async function assertAppSourceIsSafe() {
   }
 }
 
+async function prepareBundledDemoResources(workRoot) {
+  const stagedDirectory = path.join(workRoot, "PS2SDK-Cube-Demo");
+  await fs.mkdir(stagedDirectory, { mode: 0o700 });
+
+  for (const spec of bundledDemoFiles) {
+    const source = path.join(bundledDemoSourceDirectory, spec.sourceName);
+    const stat = await fs.lstat(source).catch(() => null);
+    if (!stat?.isFile() || stat.isSymbolicLink() || stat.size === 0) {
+      fail(`Required PS2SDK Cube Demo resource is missing, empty, or unsafe: ${spec.sourceName}`);
+    }
+    const bytes = await fs.readFile(source);
+    if (spec.sourceName === "ps2sdk-cube.elf") {
+      const digest = crypto.createHash("sha256").update(bytes).digest("hex");
+      if (digest !== bundledDemoSha256) {
+        fail(`PS2SDK Cube Demo SHA-256 mismatch: expected ${bundledDemoSha256}, found ${digest}.`);
+      }
+    } else if (spec.sourceName === "PS2SDK-AFL-2.0.txt") {
+      const license = bytes.toString("utf8");
+      if (!license.includes("Academic Free License") || !license.includes("2.0")) {
+        fail("PS2SDK Cube Demo license does not identify Academic Free License 2.0.");
+      }
+    } else if (spec.sourceName === "PS2SDK-CUBE-NOTICE.md") {
+      const notice = bytes.toString("utf8");
+      for (const marker of ["ps2sdk", "Cube", "newlib", "GCC"]) {
+        if (!notice.toLocaleLowerCase("en-US").includes(marker.toLocaleLowerCase("en-US"))) {
+          fail(`PS2SDK Cube Demo notice is missing required provenance marker: ${marker}`);
+        }
+      }
+    }
+    await fs.copyFile(source, path.join(stagedDirectory, spec.packageName), fs.constants.COPYFILE_EXCL);
+  }
+  return stagedDirectory;
+}
+
 async function readAppIdentity() {
   const appPackage = JSON.parse(await fs.readFile(path.join(appDirectory, "package.json"), "utf8"));
   if (
@@ -98,7 +143,7 @@ async function makeWindowsIcon(workRoot) {
   return iconTarget;
 }
 
-async function createPackage(spec, workRoot, iconPath) {
+async function createPackage(spec, workRoot, iconPath, bundledDemoResourceDirectory) {
   const packagerOutput = path.join(workRoot, "electron-packager");
   await fs.mkdir(packagerOutput, { recursive: true, mode: 0o700 });
   const packagePaths = await packager({
@@ -113,6 +158,7 @@ async function createPackage(spec, workRoot, iconPath) {
     buildVersion: "0.1.0",
     appCopyright: "Copyright (c) 2026 ten:ten",
     asar: true,
+    extraResource: [bundledDemoResourceDirectory],
     prune: true,
     overwrite: false,
     junk: true,
@@ -242,13 +288,14 @@ async function main() {
   const workRoot = await fs.mkdtemp(path.join(buildDirectory, "package-work-"));
   try {
     const iconPath = await makeWindowsIcon(workRoot);
+    const bundledDemoResourceDirectory = await prepareBundledDemoResources(workRoot);
     const artifactStagingDirectory = path.join(workRoot, "verified-artifacts");
     await fs.mkdir(artifactStagingDirectory, { mode: 0o700 });
     const stagedArtifacts = [];
     const verificationResults = [];
     for (const spec of [PACKAGE_SPECS.x64, PACKAGE_SPECS.arm64]) {
       console.log(`Packaging Windows ${spec.arch} with Electron Packager...`);
-      const packagePath = await createPackage(spec, workRoot, iconPath);
+      const packagePath = await createPackage(spec, workRoot, iconPath, bundledDemoResourceDirectory);
       const archivePath = await createZip(packagePath, spec, artifactStagingDirectory);
       const verified = await verifyWindowsPackage(archivePath, spec);
       stagedArtifacts.push(archivePath);

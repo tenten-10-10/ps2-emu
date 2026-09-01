@@ -37,7 +37,12 @@ struct GameInspector: View {
                     Text(game.title)
                         .font(.title3.bold())
                         .textSelection(.enabled)
-                    Label(game.kind.label, systemImage: "checkmark.seal.fill")
+                    Label(
+                        game.isBundledHomebrewDemo
+                            ? preferences.text("Bundled open-source homebrew demo", "同梱オープンソースhomebrewデモ")
+                            : game.kind.label,
+                        systemImage: "checkmark.seal.fill"
+                    )
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -45,7 +50,12 @@ struct GameInspector: View {
                 Button {
                     playGame(game)
                 } label: {
-                    Label(preferences.text("Launch Game", "ゲームを起動"), systemImage: "play.fill")
+                    Label(
+                        game.isBundledHomebrewDemo
+                            ? preferences.text("Launch Demo", "デモを起動")
+                            : preferences.text("Launch Game", "ゲームを起動"),
+                        systemImage: "play.fill"
+                    )
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -95,9 +105,11 @@ struct GameInspector: View {
                 }
 
                 Menu(preferences.text("More Actions", "その他の操作")) {
-                    Button(preferences.text("Rename…", "タイトルを変更…")) {
-                        editedTitle = game.title
-                        isRenaming = true
+                    if !game.isBundledHomebrewDemo {
+                        Button(preferences.text("Rename…", "タイトルを変更…")) {
+                            editedTitle = game.title
+                            isRenaming = true
+                        }
                     }
                     Button(preferences.text("Remove from Library", "ライブラリから削除"), role: .destructive) {
                         library.removeSelected()

@@ -115,11 +115,23 @@ struct FirstRunNoticeView: View {
                     )
 
                     NoticeRow(
+                        symbol: "shippingbox.fill",
+                        title: preferences.text(
+                            "Included open-source validation demo",
+                            "同梱のオープンソース検証デモ"
+                        ),
+                        message: preferences.text(
+                            "PS2SDK Cube Demo is included as a homebrew ELF validation sample under the Academic Free License 2.0. It is not a commercial PS2 game. Its exact source, attribution, SHA-256, and required ps2sdk/newlib/GCC license notices are available in Open Source Licenses.",
+                            "PS2SDK Cube DemoはAcademic Free License 2.0のhomebrew ELF検証サンプルとして同梱されています。市販のPS2ゲームではありません。正確なソース、帰属表示、SHA-256、必須のps2sdk/newlib/GCCライセンス通知は「オープンソースライセンス」で確認できます。"
+                        )
+                    )
+
+                    NoticeRow(
                         symbol: "checkmark.shield",
                         title: preferences.text("Use only lawful content", "適法なコンテンツのみ使用"),
                         message: preferences.text(
-                            "Use only disc images you created from games you legally own where applicable law permits, or ISO/ELF and other files you are authorized to use. No games, BIOS files, or console keys are included.",
-                            "適用法で認められる範囲で、適法に所有するゲームから自分で作成したディスクイメージ、または使用許可を得たISO・ELF等のファイルだけを使用してください。ゲーム、BIOS、コンソールキーは同梱されません。"
+                            "Except for the identified open-source PS2SDK Cube Demo, use only disc images you created from games you legally own where applicable law permits, or ISO/ELF and other files you are authorized to use. No commercial games, BIOS files, or console keys are included.",
+                            "明示されたオープンソースのPS2SDK Cube Demoを除き、適用法で認められる範囲で、適法に所有するゲームから自分で作成したディスクイメージ、または使用許可を得たISO・ELF等のファイルだけを使用してください。市販ゲーム、BIOS、コンソールキーは同梱されません。"
                         )
                     )
 
@@ -169,8 +181,8 @@ struct FirstRunNoticeView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $hasAcknowledged) {
                     Text(preferences.text(
-                        "I have read and understand these notices, and I will use only content I am legally permitted to use.",
-                        "上記の注意事項を読み、理解しました。法的に使用が認められたコンテンツだけを使用します。"
+                        "I have read and understand these notices, have reviewed and accept the Academic Free License 2.0 terms for the included PS2SDK Cube Demo, and will use only content I am legally permitted to use.",
+                        "上記の注意事項を読み、理解しました。同梱のPS2SDK Cube Demoに適用されるAcademic Free License 2.0の条件を確認して受諾し、法的に使用が認められたコンテンツだけを使用します。"
                     ))
                 }
 

@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  BUNDLED_DEMO_ELF_PACKAGE_PATH,
+  BUNDLED_DEMO_SHA256,
   PACKAGE_SPECS,
+  isExactBundledDemoElfPath,
   parsePEMachine,
   prohibitedPayloadReason,
   validateArchiveEntryNames,
@@ -93,6 +97,10 @@ test("compatibility and custom-core warnings are enforced by the main process", 
   assert.match(main, /const revalidatedCore = await resolveValidatedCore\(\)/);
   assert.match(main, /assertCoreExecutableIdentity\(core\)/);
   assert.match(main, /identity changed before launch/);
+  assert.match(main, /await verifyBundledDemo\(bundledDemoFilePath\)/);
+  assert.match(main, /await verifyBundledDemoResourceSet\(path\.dirname\(configuredDemoPath\)\)/);
+  assert.match(main, /await verifyBundledDemoDocument\(candidate, filename\)/);
+  assert.match(main, /if \(selectedGame\) selectedGame = await validatedSelectedGame\(selectedGame\.id\)/);
   assert.doesNotMatch(preload, /acknowledged\s*:\s*true/);
   assert.doesNotMatch(renderer, /window\.confirm\(/);
   assert.match(renderer, /closest\(["']\[data-game-id\]["']\)/);
@@ -121,6 +129,8 @@ test("preload exposes a narrow invoke-only bridge", async () => {
     "core:settings",
     "core:stop",
     "logs:show",
+    "demo:open-license",
+    "demo:open-notice",
   ];
   assert.deepEqual([...new Set(invoked)].sort(), expected.sort());
   assert.deepEqual(
@@ -140,9 +150,17 @@ test("PS2 Emu identity preserves the prior user-data path and requires hash-only
   assert.match(main, /app\.setPath\(["']userData["']/);
   assert.match(main, /app\.getPath\(["']system["']\)/);
   assert.match(main, /payload\?\.hashOnlyRiskAccepted !== true/);
+  assert.match(main, /payload\?\.bundledDemoAccepted !== true/);
+  assert.match(main, /state\.preferences\.bundledDemoTermsAccepted = true/);
+  assert.match(main, /state\.preferences\.bundledDemoTermsRevision = BUNDLED_DEMO_TERMS_REVISION/);
   assert.match(html, /<title>PS2 Emu<\/title>/);
   assert.match(html, /data-notice-hash-only/);
   assert.match(renderer, /hashOnlyRiskAccepted:\s*elements\.noticeHashOnly\.checked/);
+  assert.match(renderer, /bundledDemoAccepted:\s*elements\.noticeDemo\.checked/);
+  assert.match(renderer, /nextState\.preferences\.bundledDemoTermsAccepted === true/);
+  assert.match(renderer, /reviewed and accept the Academic Free License 2\.0 terms/);
+  assert.match(html, /data-open-demo-license/);
+  assert.match(html, /data-open-demo-notice/);
   assert.match(renderer, /standardHashWarning/);
 });
 
@@ -161,9 +179,14 @@ test("app source has no updater, bootstrap download, analytics, or unexpected re
 test("build dependencies and package scripts stay local and updater-free", async () => {
   const packageJSON = JSON.parse(await read("package.json"));
   assert.equal(packageJSON.private, true);
-  assert.equal(packageJSON.scripts.test, "node --test tests/*.test.mjs");
+  assert.equal(
+    packageJSON.scripts.test,
+    "node --test tests/*.test.mjs && node scripts/check-powershell-release.mjs",
+  );
+  assert.equal(packageJSON.scripts["check:release-powershell"], "node scripts/check-powershell-release.mjs");
   assert.equal(packageJSON.scripts["package:windows"], "node scripts/package-windows.mjs");
   assert.equal(packageJSON.scripts["verify:windows"], "node scripts/verify-windows-packages.mjs");
+  assert.equal(packageJSON.devDependencies["@electron/asar"], "4.3.0");
   assert.equal(packageJSON.devDependencies["@electron/packager"], "20.3.0");
   assert.equal(packageJSON.devDependencies.electron, "44.1.0");
   const dependencyNames = Object.keys({ ...packageJSON.dependencies, ...packageJSON.devDependencies });
@@ -191,6 +214,7 @@ test("ZIP path validation rejects traversal, duplicates, macOS metadata, and for
     "PS2 Emu-win32-x64/PS2 Emu.exe",
     "PS2 Emu-win32-x64/resources/",
     "PS2 Emu-win32-x64/resources/app.asar",
+    `PS2 Emu-win32-x64/${BUNDLED_DEMO_ELF_PACKAGE_PATH}`,
   ]);
   assert.equal(safe.root, "PS2 Emu-win32-x64");
 
@@ -203,6 +227,10 @@ test("ZIP path validation rejects traversal, duplicates, macOS metadata, and for
     ["root/Qt5Core.dll"],
     ["root/states.db"],
     ["root/game.iso"],
+    ["root/game.rom"],
+    ["root/resources/PS2SDK-Cube-Demo/other.elf"],
+    ["root/resources/ps2sdk-cube-demo/ps2sdk-cube.elf"],
+    ["root/other/PS2SDK-Cube-Demo/ps2sdk-cube.elf"],
     ["root/signing.p12"],
     ["root/scph39001.bin"],
   ]) assert.throws(() => validateArchiveEntryNames(entries));
@@ -213,9 +241,39 @@ test("forbidden payload classification covers external core, games, BIOS, and cr
   assert.equal(prohibitedPayloadReason("platforms/Qt6Core.dll"), "bundled Qt runtime");
   assert.equal(prohibitedPayloadReason("states.db"), "bundled Play! compatibility database");
   assert.equal(prohibitedPayloadReason("games/demo.chd"), "bundled game or homebrew image");
+  assert.equal(prohibitedPayloadReason("games/demo.rom"), "bundled game or homebrew image");
+  assert.equal(prohibitedPayloadReason(BUNDLED_DEMO_ELF_PACKAGE_PATH), null);
+  assert.equal(isExactBundledDemoElfPath(BUNDLED_DEMO_ELF_PACKAGE_PATH), true);
+  assert.equal(isExactBundledDemoElfPath(`root/${BUNDLED_DEMO_ELF_PACKAGE_PATH}`), true);
+  assert.equal(isExactBundledDemoElfPath("resources/PS2SDK-Cube-Demo/other.elf"), false);
   assert.equal(prohibitedPayloadReason("firmware/ps2-bios.bin"), "bundled BIOS file");
   assert.equal(prohibitedPayloadReason("codesign/release.pfx"), "bundled private key or signing credential");
   assert.equal(prohibitedPayloadReason("resources/app.asar"), null);
+});
+
+test("bundled PS2SDK fixture is exact, external to ASAR, and source-bound", async () => {
+  const elf = await fs.readFile(path.join(windowsRoot, "..", "Resources", "Fixtures", "ps2sdk-cube.elf"));
+  assert.equal(crypto.createHash("sha256").update(elf).digest("hex"), BUNDLED_DEMO_SHA256);
+  const packaging = await read("scripts/package-windows.mjs");
+  const verifier = await read("scripts/verify-windows-packages.mjs");
+  const runtimeVerifier = await read("app/lib/bundled-demo.mjs");
+  assert.match(packaging, /extraResource:\s*\[bundledDemoResourceDirectory\]/);
+  assert.doesNotMatch(packaging, /extraResource:\s*\[[^\]]*Resources[^\]]*Fixtures/i);
+  for (const filename of [
+    "ps2sdk-cube.elf",
+    "PS2SDK-AFL-2.0.txt",
+    "PS2SDK-CUBE-NOTICE.md",
+    "NEWLIB-COPYING.txt",
+    "GCC-COPYING.RUNTIME.txt",
+    "GCC-COPYING3.txt",
+  ]) {
+    assert.equal(packaging.includes(filename), true, `packaging fixture: ${filename}`);
+    assert.equal(verifier.includes(filename), true, `package verification fixture: ${filename}`);
+    assert.equal(runtimeVerifier.includes(filename), true, `runtime verification fixture: ${filename}`);
+  }
+  assert.match(verifier, /Packaged PS2SDK Cube Demo SHA-256 mismatch/);
+  assert.match(verifier, /does not match reviewed source bytes/);
+  assert.match(verifier, /"lib\/bundled-demo\.mjs"/);
 });
 
 test("distribution warning and scripts preserve unsigned cross-package boundaries", async () => {
@@ -228,6 +286,10 @@ test("distribution warning and scripts preserve unsigned cross-package boundarie
     "Windows 11 on Arm",
     "HASH-ONLY",
     "publisher is unverified",
+    "ps2dev/ps2sdk",
+    "AFL 2.0",
+    BUNDLED_DEMO_SHA256,
+    "commercial games",
   ]) assert.equal(warning.includes(required), true, required);
 
   const packaging = await read("scripts/package-windows.mjs");
@@ -246,6 +308,7 @@ test("distribution warning and scripts preserve unsigned cross-package boundarie
   for (const [identityPath, identityFilename] of [
     ["core-identity-manifest.json", "core-identity-manifest.json"],
     ["lib/core-identity.mjs", "core-identity.mjs"],
+    ["lib/bundled-demo.mjs", "bundled-demo.mjs"],
     ["lib/windows-core-evidence.mjs", "windows-core-evidence.mjs"],
   ]) {
     assert.equal(packaging.includes(identityFilename), true, `packaging preflight: ${identityPath}`);

@@ -81,6 +81,24 @@ if [[ "$bundle_play" == "1" ]]; then
 fi
 /usr/bin/ditto "$project_root/PRIVACY.md" "$staging/Licenses and Notices/PRIVACY.md"
 /usr/bin/ditto "$project_root/SECURITY.md" "$staging/Licenses and Notices/SECURITY.md"
+/usr/bin/ditto \
+  "$project_root/Resources/Fixtures/PS2SDK-AFL-2.0.txt" \
+  "$staging/Licenses and Notices/PS2SDK-AFL-2.0.txt"
+/usr/bin/ditto \
+  "$project_root/Resources/Fixtures/PS2SDK-CUBE-NOTICE.md" \
+  "$staging/Licenses and Notices/PS2SDK-CUBE-NOTICE.md"
+/usr/bin/ditto \
+  "$project_root/Resources/Fixtures/NEWLIB-COPYING.txt" \
+  "$staging/Licenses and Notices/NEWLIB-COPYING.txt"
+/usr/bin/ditto \
+  "$project_root/Resources/Fixtures/GCC-COPYING.RUNTIME.txt" \
+  "$staging/Licenses and Notices/GCC-COPYING.RUNTIME.txt"
+/usr/bin/ditto \
+  "$project_root/Resources/Fixtures/GCC-COPYING3.txt" \
+  "$staging/Licenses and Notices/GCC-COPYING3.txt"
+/usr/bin/ditto \
+  "$project_root/Resources/Fixtures/source" \
+  "$staging/Licenses and Notices/PS2SDK-Cube-Source"
 if [[ -f "$project_root/LICENSE" ]]; then
   /usr/bin/ditto "$project_root/LICENSE" "$staging/Licenses and Notices/PS2-Emu-License.txt"
 elif [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then

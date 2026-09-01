@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const execFileAsync = promisify(execFile);
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const windowsRoot = path.resolve(scriptDirectory, "..");
+const projectRoot = path.resolve(windowsRoot, "..");
 const distributionDirectory = path.join(windowsRoot, "dist");
 const packagePrefix = "PS2-Emu-0.1.0-Windows-";
 const maximumArchiveBytes = 1024 * 1024 * 1024;
@@ -29,13 +30,25 @@ export const PACKAGE_SPECS = Object.freeze({
   }),
 });
 
-const gameExtensions = new Set([".iso", ".mds", ".isz", ".cso", ".cue", ".chd", ".elf"]);
+export const BUNDLED_DEMO_SHA256 = "1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584";
+export const BUNDLED_DEMO_PACKAGE_DIRECTORY = "resources/PS2SDK-Cube-Demo";
+export const BUNDLED_DEMO_ELF_PACKAGE_PATH = `${BUNDLED_DEMO_PACKAGE_DIRECTORY}/ps2sdk-cube.elf`;
+const bundledDemoFiles = Object.freeze([
+  Object.freeze({ sourceName: "ps2sdk-cube.elf", packageName: "ps2sdk-cube.elf" }),
+  Object.freeze({ sourceName: "PS2SDK-AFL-2.0.txt", packageName: "PS2SDK-AFL-2.0.txt" }),
+  Object.freeze({ sourceName: "PS2SDK-CUBE-NOTICE.md", packageName: "PS2SDK-CUBE-NOTICE.md" }),
+  Object.freeze({ sourceName: "NEWLIB-COPYING.txt", packageName: "NEWLIB-COPYING.txt" }),
+  Object.freeze({ sourceName: "GCC-COPYING.RUNTIME.txt", packageName: "GCC-COPYING.RUNTIME.txt" }),
+  Object.freeze({ sourceName: "GCC-COPYING3.txt", packageName: "GCC-COPYING3.txt" }),
+]);
+const gameExtensions = new Set([".iso", ".mds", ".isz", ".cso", ".cue", ".chd", ".elf", ".rom", ".rom0", ".rom1", ".rom2"]);
 const privateKeyExtensions = new Set([".key", ".keys", ".p8", ".p12", ".pfx", ".pvk", ".snk", ".pem"]);
 const requiredAsarEntries = Object.freeze([
   "package.json",
   "main.mjs",
   "preload.cjs",
   "core-identity-manifest.json",
+  "lib/bundled-demo.mjs",
   "lib/core.mjs",
   "lib/core-identity.mjs",
   "lib/windows-core-evidence.mjs",
@@ -78,7 +91,10 @@ export function prohibitedPayloadReason(entryName) {
   if (basename === "play.exe") return "bundled Play.exe";
   if (/^qt.*\.dll$/i.test(basename)) return "bundled Qt runtime";
   if (basename === "states.db") return "bundled Play! compatibility database";
-  if (gameExtensions.has(extension)) return "bundled game or homebrew image";
+  if (gameExtensions.has(extension)) {
+    if (extension === ".elf" && isExactBundledDemoElfPath(normalized)) return null;
+    return "bundled game or homebrew image";
+  }
   if (privateKeyExtensions.has(extension)) return "bundled private key or signing credential";
   if (basename === ".env" || basename.startsWith(".env.")) return "bundled environment secret file";
   if (["id_rsa", "id_ed25519", "credentials", "credentials.json"].includes(basename)) {
@@ -89,6 +105,14 @@ export function prohibitedPayloadReason(entryName) {
   }
   if (extension === ".pdb") return "debug symbol file";
   return null;
+}
+
+export function isExactBundledDemoElfPath(entryName) {
+  const normalized = String(entryName).replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
+  if (normalized === BUNDLED_DEMO_ELF_PACKAGE_PATH) return true;
+  const components = normalized.split("/");
+  return components.length === 4
+    && components.slice(1).join("/") === BUNDLED_DEMO_ELF_PACKAGE_PATH;
 }
 
 export function validateArchiveEntryNames(entries) {
@@ -150,6 +174,40 @@ async function assertRegularFile(filePath, label, minimumBytes = 1) {
   return stat;
 }
 
+export async function verifyBundledDemoResources(packageRoot) {
+  const packagedDirectory = path.join(packageRoot, ...BUNDLED_DEMO_PACKAGE_DIRECTORY.split("/"));
+  const sourceDirectory = path.join(projectRoot, "Resources", "Fixtures");
+  const expectedNames = bundledDemoFiles.map((spec) => spec.packageName).sort();
+  const entries = await fs.readdir(packagedDirectory, { withFileTypes: true }).catch((error) => {
+    fail(`Packaged PS2SDK Cube Demo directory cannot be read: ${error.message}`);
+  });
+  const actualNames = entries.map((entry) => entry.name).sort();
+  if (
+    entries.some((entry) => !entry.isFile() || entry.isSymbolicLink())
+    || actualNames.length !== expectedNames.length
+    || actualNames.some((name, index) => name !== expectedNames[index])
+  ) {
+    fail(`Packaged PS2SDK Cube Demo inventory is not exact: ${actualNames.join(", ")}`);
+  }
+  for (const spec of bundledDemoFiles) {
+    const packagedPath = path.join(packagedDirectory, spec.packageName);
+    const sourcePath = path.join(sourceDirectory, spec.sourceName);
+    await assertRegularFile(packagedPath, `packaged PS2SDK Cube Demo resource ${spec.packageName}`);
+    await assertRegularFile(sourcePath, `reviewed PS2SDK Cube Demo source ${spec.sourceName}`);
+    const packagedBytes = await fs.readFile(packagedPath);
+    const sourceBytes = await fs.readFile(sourcePath);
+    if (spec.packageName === "ps2sdk-cube.elf") {
+      const digest = crypto.createHash("sha256").update(packagedBytes).digest("hex");
+      if (digest !== BUNDLED_DEMO_SHA256) {
+        fail(`Packaged PS2SDK Cube Demo SHA-256 mismatch: expected ${BUNDLED_DEMO_SHA256}, found ${digest}.`);
+      }
+    }
+    if (!packagedBytes.equals(sourceBytes)) {
+      fail(`Packaged PS2SDK Cube Demo resource does not match reviewed source bytes: ${spec.packageName}`);
+    }
+  }
+}
+
 async function assertExtractedTreeIsRegular(rootDirectory) {
   const queue = [rootDirectory];
   while (queue.length > 0) {
@@ -203,22 +261,16 @@ async function readPEMachineFile(executablePath, fileSize) {
 
 async function loadAsarModule() {
   const require = createRequire(import.meta.url);
-  let packagerEntry;
-  try {
-    packagerEntry = require.resolve("@electron/packager");
-  } catch {
-    fail("@electron/packager is not installed; cannot resolve its @electron/asar verifier dependency.");
-  }
   let asarEntry;
   try {
-    asarEntry = require.resolve("@electron/asar", { paths: [path.dirname(packagerEntry)] });
+    asarEntry = require.resolve("@electron/asar");
   } catch {
-    fail("@electron/asar could not be resolved from @electron/packager.");
+    fail("The pinned direct @electron/asar verifier dependency is not installed.");
   }
   return import(pathToFileURL(asarEntry).href);
 }
 
-async function verifyAsar(asarPath) {
+export async function verifyReviewedAppAsar(asarPath) {
   const asar = await loadAsarModule();
   if (typeof asar.listPackage !== "function" || typeof asar.extractFile !== "function") {
     fail("Resolved @electron/asar does not expose listPackage and extractFile.");
@@ -313,6 +365,9 @@ export async function verifyWindowsPackage(archivePath, expectedSpec = null) {
     `${archiveIndex.root}/READ-ME-FIRST.txt`,
     `${archiveIndex.root}/PRIVACY.md`,
     `${archiveIndex.root}/SECURITY.md`,
+    ...bundledDemoFiles.map((spec) => (
+      `${archiveIndex.root}/${BUNDLED_DEMO_PACKAGE_DIRECTORY}/${spec.packageName}`
+    )),
   ];
   for (const required of requiredZipEntries) {
     if (!archiveIndex.normalizedEntries.includes(required.toLocaleLowerCase("en-US"))) {
@@ -365,7 +420,8 @@ export async function verifyWindowsPackage(archivePath, expectedSpec = null) {
     await assertRegularFile(path.join(packageRoot, "SECURITY.md"), "security policy", 100);
     const asarPath = path.join(packageRoot, "resources", "app.asar");
     await assertRegularFile(asarPath, "app.asar", 1000);
-    await verifyAsar(asarPath);
+    await verifyReviewedAppAsar(asarPath);
+    await verifyBundledDemoResources(packageRoot);
 
     const readmePath = path.join(packageRoot, "READ-ME-FIRST.txt");
     await assertRegularFile(readmePath, "distribution warning", 300);
@@ -378,6 +434,10 @@ export async function verifyWindowsPackage(archivePath, expectedSpec = null) {
       "Windows 11 on Arm",
       "HASH-ONLY",
       "publisher is unverified",
+      "ps2dev/ps2sdk",
+      "AFL 2.0",
+      BUNDLED_DEMO_SHA256,
+      "commercial games",
     ];
     for (const warning of requiredWarnings) {
       if (!readme.includes(warning)) fail(`Distribution warning is missing required text: ${warning}`);

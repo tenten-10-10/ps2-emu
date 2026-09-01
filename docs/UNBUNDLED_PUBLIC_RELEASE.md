@@ -9,7 +9,9 @@ published or approved for distribution.
 
 ## Purpose
 
-This macOS candidate lane packages only the PS2 Emu SwiftUI wrapper.
+This macOS candidate lane packages the PS2 Emu SwiftUI wrapper plus the exact
+separately licensed PS2SDK Cube Demo validation fixture and its required
+ps2sdk/newlib/GCC notices.
 It does **not** put `Play.app`, Qt frameworks or plugins, MoltenVK, Play!'s
 `states.db`, or the Play!-only notices into the app or DMG.
 

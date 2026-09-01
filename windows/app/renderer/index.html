@@ -40,6 +40,7 @@
       <div class="sidebar-foot">
         <p data-i18n="lawfulOnly">Use only lawfully owned game dumps or authorized homebrew.</p>
         <button class="text-button" type="button" data-show-logs data-i18n="showLogs">Show logs</button>
+        <button class="text-button" type="button" data-open-about data-i18n="about">About</button>
       </div>
     </aside>
 
@@ -143,17 +144,56 @@
     </form>
   </dialog>
 
+  <dialog class="settings-dialog about-dialog" data-about-dialog aria-labelledby="about-title">
+    <form method="dialog">
+      <header>
+        <div>
+          <p class="eyebrow" data-i18n="aboutEyebrow">OPEN-SOURCE SAMPLE</p>
+          <h2 id="about-title" data-i18n="aboutTitle">About PS2 Emu</h2>
+        </div>
+        <button class="icon-button" value="close" aria-label="Close">×</button>
+      </header>
+
+      <section class="settings-group about-demo">
+        <h3 data-i18n="aboutDemoTitle">PS2SDK Cube Demo</h3>
+        <p class="settings-copy" data-i18n="aboutDemoSource">Official source: ps2dev/ps2sdk samples/cube · License: Academic Free License 2.0 (AFL-2.0).</p>
+        <p class="settings-copy" data-i18n="aboutDemoIntegrity">The ELF is stored outside app.asar and checked against this exact SHA-256 at packaging, verification, and immediately before launch:</p>
+        <code class="integrity-hash" data-demo-sha></code>
+        <div class="settings-actions about-actions">
+          <button class="button button--secondary" type="button" data-open-demo-license data-i18n="readDemoLicense">Read AFL-2.0 terms</button>
+          <button class="button button--secondary" type="button" data-open-demo-notice data-i18n="readDemoNotice">Read provenance &amp; notices</button>
+        </div>
+        <p class="warning-copy warning-copy--hash" data-i18n="aboutRuntimeNotice">The accompanying notice records statically linked runtime provenance. Public distribution remains gated on final legal review.</p>
+      </section>
+
+      <section class="settings-group">
+        <p class="settings-copy" data-i18n="aboutNoCommercial">No commercial games, PlayStation 2 BIOS, Play.exe, or Play! core are included.</p>
+      </section>
+
+      <footer>
+        <span>PS2 Emu</span>
+        <button class="button button--primary" value="close" data-i18n="done">Done</button>
+      </footer>
+    </form>
+  </dialog>
+
   <dialog class="notice-dialog" data-notice-dialog aria-labelledby="notice-title">
     <form method="dialog">
       <p class="eyebrow">FIRST RUN · SAFETY</p>
       <h1 id="notice-title" data-i18n="noticeTitle">Before you continue</h1>
       <p class="notice-lead" data-i18n="noticeLead">PS2 Emu is an independent launcher. Play! opens separately and game compatibility is not guaranteed.</p>
 
+      <div class="settings-actions notice-license-actions">
+        <button class="button button--secondary" type="button" data-open-demo-license data-i18n="readDemoLicense">Read AFL-2.0 terms</button>
+        <button class="button button--secondary" type="button" data-open-demo-notice data-i18n="readDemoNotice">Read provenance &amp; notices</button>
+      </div>
+
       <div class="notice-points">
-        <label><input type="checkbox" data-notice-lawful><span data-i18n="noticeLawful">I will use only game dumps I may lawfully use or authorized homebrew. No games or BIOS are included.</span></label>
+        <label><input type="checkbox" data-notice-lawful><span data-i18n="noticeLawful">I will use only game dumps I may lawfully use or authorized homebrew. No commercial games or BIOS are included.</span></label>
         <label><input type="checkbox" data-notice-privacy><span data-i18n="noticePrivacy">I understand that local file paths, library history and capped diagnostic logs are stored on this PC.</span></label>
         <label><input type="checkbox" data-notice-affiliation><span data-i18n="noticeAffiliation">I understand this project is not affiliated with or endorsed by Sony, PlayStation or Play!.</span></label>
         <label><input type="checkbox" data-notice-hash-only><span data-i18n="noticeHashOnly">I understand that standard Windows Play! is unsigned and accepted only by exact hashes; its publisher is unverified.</span></label>
+        <label><input type="checkbox" data-notice-demo><span data-i18n="noticeDemo">I have reviewed and accept the Academic Free License 2.0 terms for the bundled official ps2dev/ps2sdk Cube Demo. It is the only bundled playable content; no commercial games are included.</span></label>
       </div>
 
       <div class="notice-language">

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import vm from "node:vm";
@@ -44,6 +45,25 @@ check(manifest.product.version === windowsPackage.version, "Windows build-packag
 check(manifest.product.version === windowsAppPackage.version, "Windows app-package version drift");
 check(manifest.product.version === siteConfig.currentVersion, "teaser version drift");
 check(manifest.distributionMode === "external-core", "public manifest must remain external-core");
+execFileSync("/bin/sh", [resolve(root, "scripts/verify-bundled-homebrew.sh")], {
+  cwd: root,
+  stdio: ["ignore", "ignore", "inherit"],
+});
+const bundledHomebrew = manifest.bundledHomebrew;
+check(bundledHomebrew?.id === "ps2sdk-cube-demo", "bundled homebrew identity drift");
+check(bundledHomebrew?.displayName === "PS2SDK Cube Demo", "bundled homebrew display name drift");
+check(bundledHomebrew?.kind === "open-source-homebrew-demo", "bundled fixture must remain a demo");
+check(bundledHomebrew?.commercialGame === false, "bundled fixture must not be described as a commercial game");
+check(bundledHomebrew?.filePath === "Resources/Fixtures/ps2sdk-cube.elf", "bundled fixture path drift");
+check(bundledHomebrew?.byteSize === 174772, "bundled fixture byte-size drift");
+check(bundledHomebrew?.sha256 === "1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584", "bundled fixture hash drift");
+check(bundledHomebrew?.license === "AFL-2.0", "bundled fixture license drift");
+check(bundledHomebrew?.sourceRevision === "39a89923ce59152fa855250cfacaccf8e581a1eb", "bundled fixture source revision drift");
+check(bundledHomebrew?.upstreamActionsRun === 33232694254, "bundled fixture CI provenance drift");
+check(bundledHomebrew?.upstreamArtifactSha256 === "b2d3c6e46a9d6348da2442b9ad76a4486d1522d2c802bc885f3afdbffa1a61f2", "bundled fixture artifact digest drift");
+check(bundledHomebrew?.toolchainContainerSha256 === "e15fcc76f5ae2f450a8359f7541ae806535992099f5df39dd180698b3ef52508", "bundled fixture toolchain digest drift");
+check(Array.isArray(bundledHomebrew?.noticePaths) && bundledHomebrew.noticePaths.length === 5, "bundled fixture notice set drift");
+check(Array.isArray(bundledHomebrew?.sourcePaths) && bundledHomebrew.sourcePaths.length === 3, "bundled fixture preserved-source set drift");
 check(manifest.publicReleaseApproved === false, "public approval cannot be enabled in source metadata");
 check(manifest.sourceRevision === null, "unreleased manifest must not claim a source revision");
 let wrapperLicenseExists = true;
@@ -95,6 +115,8 @@ const requiredFalseGates = [
   "paymentsEnabled",
   "macOSDeveloperIdAndNotarizationComplete",
   "windowsAuthenticodeComplete",
+  "bundledHomebrewHumanLicenseReviewComplete",
+  "bundledHomebrewFunctionalEvidenceComplete",
   "cleanMachineEvidenceComplete",
   "realHardwareEvidenceComplete",
 ];
@@ -103,6 +125,7 @@ for (const gate of requiredFalseGates) {
 }
 check(manifest.gates.windowsStandardCorePolicyApproved === true, "owner-approved Windows hash-only policy is missing");
 check(manifest.gates.windowsStandardCoreRuntimeIntegrationComplete === true, "Windows hash-only runtime integration gate is missing");
+check(manifest.gates.bundledHomebrewTechnicalVerificationComplete === true, "bundled homebrew technical verification gate is missing");
 check(windowsCoreIdentityManifest.schemaVersion === 2, "Windows core identity schema drift");
 check(windowsCoreIdentityManifest.approvalStatus === "ready", "Windows core identity manifest is not ready");
 check(windowsCoreIdentityManifest.blockReason === null, "ready Windows core identity manifest must not claim a blocker");

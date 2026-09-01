@@ -1,0 +1,929 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tenten-10-10/ps2-emu/blob/main/docs/release-evidence/release-evidence.schema.json",
+  "title": "PS2 Emu release evidence record",
+  "description": "Machine-readable shape for one platform's external, human-observed release evidence. Completed records belong in an immutable bundle outside the source repository.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordState",
+    "product",
+    "source",
+    "finalArtifact",
+    "sourceBinding",
+    "target",
+    "download",
+    "platformSecurity",
+    "externalPlay",
+    "functionalTests",
+    "systemTests",
+    "tester",
+    "attestation",
+    "attachments",
+    "failures"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "recordState": {
+      "enum": [
+        "template",
+        "completed"
+      ]
+    },
+    "product": {
+      "$ref": "#/$defs/product"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "finalArtifact": {
+      "$ref": "#/$defs/finalArtifact"
+    },
+    "sourceBinding": {
+      "$ref": "#/$defs/sourceBinding"
+    },
+    "target": {
+      "$ref": "#/$defs/target"
+    },
+    "download": {
+      "$ref": "#/$defs/download"
+    },
+    "platformSecurity": {
+      "$ref": "#/$defs/platformSecurity"
+    },
+    "externalPlay": {
+      "$ref": "#/$defs/externalPlay"
+    },
+    "functionalTests": {
+      "$ref": "#/$defs/functionalTests"
+    },
+    "systemTests": {
+      "$ref": "#/$defs/systemTests"
+    },
+    "tester": {
+      "$ref": "#/$defs/tester"
+    },
+    "attestation": {
+      "$ref": "#/$defs/attestation"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attachment"
+      },
+      "maxItems": 100
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "maxItems": 100
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "target": {
+            "properties": {
+              "operatingSystem": {
+                "const": "macOS"
+              }
+            },
+            "required": [
+              "operatingSystem"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "platformSecurity": {
+            "properties": {
+              "macOS": {
+                "$ref": "#/$defs/macOSSecurity"
+              },
+              "windows": {
+                "type": "null"
+              }
+            }
+          },
+          "externalPlay": {
+            "properties": {
+              "identityMode": {
+                "const": "strict-developer-id"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target": {
+            "properties": {
+              "operatingSystem": {
+                "const": "Windows"
+              }
+            },
+            "required": [
+              "operatingSystem"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "platformSecurity": {
+            "properties": {
+              "macOS": {
+                "type": "null"
+              },
+              "windows": {
+                "$ref": "#/$defs/windowsSecurity"
+              }
+            }
+          },
+          "externalPlay": {
+            "properties": {
+              "identityMode": {
+                "const": "hash-only"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nullableString": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableShortString": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableSha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableGitRevision": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullablePositiveInteger": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableBoolean": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "nullableDateTime": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableHttpsURL": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "result": {
+      "enum": [
+        "not-run",
+        "pass",
+        "fail",
+        "blocked",
+        "not-applicable"
+      ]
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "notes"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/result"
+        },
+        "notes": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "PS2 Emu"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+        }
+      }
+    },
+    "sourceArchive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "sizeBytes",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "sizeBytes": {
+          "$ref": "#/$defs/nullablePositiveInteger"
+        },
+        "sha256": {
+          "$ref": "#/$defs/nullableSha256"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repositoryURL",
+        "revisionAlgorithm",
+        "revision",
+        "archive"
+      ],
+      "properties": {
+        "repositoryURL": {
+          "const": "https://github.com/tenten-10-10/ps2-emu"
+        },
+        "revisionAlgorithm": {
+          "enum": [
+            "git-sha1",
+            "git-sha256"
+          ]
+        },
+        "revision": {
+          "$ref": "#/$defs/nullableGitRevision"
+        },
+        "archive": {
+          "$ref": "#/$defs/sourceArchive"
+        }
+      }
+    },
+    "finalArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "sizeBytes",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "sizeBytes": {
+          "$ref": "#/$defs/nullablePositiveInteger"
+        },
+        "sha256": {
+          "$ref": "#/$defs/nullableSha256"
+        }
+      }
+    },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactReportedRevision",
+        "verification",
+        "rawEvidenceSha256"
+      ],
+      "properties": {
+        "artifactReportedRevision": {
+          "$ref": "#/$defs/nullableGitRevision"
+        },
+        "verification": {
+          "$ref": "#/$defs/check"
+        },
+        "rawEvidenceSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        }
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manufacturer",
+        "model",
+        "cpuOrSoC",
+        "memoryGiB",
+        "physicalMachine"
+      ],
+      "properties": {
+        "manufacturer": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "model": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "cpuOrSoC": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "memoryGiB": {
+          "$ref": "#/$defs/nullablePositiveInteger"
+        },
+        "physicalMachine": {
+          "$ref": "#/$defs/nullableBoolean"
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platformID",
+        "operatingSystem",
+        "launcherArchitecture",
+        "coreArchitecture",
+        "compatibilityMode",
+        "minimumOS",
+        "observedOSVersion",
+        "observedOSBuild",
+        "hardware"
+      ],
+      "properties": {
+        "platformID": {
+          "enum": [
+            "macos-arm64",
+            "macos-x86_64",
+            "windows-x64",
+            "windows-arm64"
+          ]
+        },
+        "operatingSystem": {
+          "enum": [
+            "macOS",
+            "Windows"
+          ]
+        },
+        "launcherArchitecture": {
+          "enum": [
+            "arm64",
+            "x86_64",
+            "x64"
+          ]
+        },
+        "coreArchitecture": {
+          "enum": [
+            "arm64",
+            "x86_64",
+            "x64"
+          ]
+        },
+        "compatibilityMode": {
+          "enum": [
+            "native",
+            "windows-x64-emulation"
+          ]
+        },
+        "minimumOS": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "observedOSVersion": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "observedOSBuild": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "hardware": {
+          "$ref": "#/$defs/hardware"
+        }
+      }
+    },
+    "download": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "browserName",
+        "browserVersion",
+        "url",
+        "downloadedAt",
+        "downloadedSha256",
+        "quarantineOrMarkOfWebPresent"
+      ],
+      "properties": {
+        "browserName": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "browserVersion": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "url": {
+          "$ref": "#/$defs/nullableHttpsURL"
+        },
+        "downloadedAt": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "downloadedSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "quarantineOrMarkOfWebPresent": {
+          "$ref": "#/$defs/nullableBoolean"
+        }
+      }
+    },
+    "macOSSecurity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "developerIDApplication",
+        "teamIdentifier",
+        "appCodeSignature",
+        "hardenedRuntime",
+        "secureTimestamp",
+        "getTaskAllowAbsent",
+        "dmgCodeSignature",
+        "notarizationStatus",
+        "notarySubmissionID",
+        "notaryLogSha256",
+        "stapledTicket",
+        "gatekeeper",
+        "securityBypassUsed"
+      ],
+      "properties": {
+        "developerIDApplication": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "teamIdentifier": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "appCodeSignature": {
+          "$ref": "#/$defs/check"
+        },
+        "hardenedRuntime": {
+          "$ref": "#/$defs/nullableBoolean"
+        },
+        "secureTimestamp": {
+          "$ref": "#/$defs/nullableBoolean"
+        },
+        "getTaskAllowAbsent": {
+          "$ref": "#/$defs/nullableBoolean"
+        },
+        "dmgCodeSignature": {
+          "$ref": "#/$defs/check"
+        },
+        "notarizationStatus": {
+          "anyOf": [
+            {
+              "enum": [
+                "Accepted",
+                "Invalid",
+                "Rejected"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notarySubmissionID": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notaryLogSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "stapledTicket": {
+          "$ref": "#/$defs/check"
+        },
+        "gatekeeper": {
+          "$ref": "#/$defs/check"
+        },
+        "securityBypassUsed": {
+          "$ref": "#/$defs/nullableBoolean"
+        }
+      }
+    },
+    "windowsSecurity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authenticodePublisher",
+        "signerCertificateSha256",
+        "signtoolVerification",
+        "timestampAuthority",
+        "timestampVerification",
+        "defender",
+        "smartScreen",
+        "smartAppControl",
+        "securityBypassUsed"
+      ],
+      "properties": {
+        "authenticodePublisher": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "signerCertificateSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "signtoolVerification": {
+          "$ref": "#/$defs/check"
+        },
+        "timestampAuthority": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "timestampVerification": {
+          "$ref": "#/$defs/check"
+        },
+        "defender": {
+          "$ref": "#/$defs/check"
+        },
+        "smartScreen": {
+          "$ref": "#/$defs/check"
+        },
+        "smartAppControl": {
+          "$ref": "#/$defs/check"
+        },
+        "securityBypassUsed": {
+          "$ref": "#/$defs/nullableBoolean"
+        }
+      }
+    },
+    "platformSecurity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "macOS",
+        "windows"
+      ],
+      "properties": {
+        "macOS": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/macOSSecurity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "windows": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/windowsSecurity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "externalPlay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delivery",
+        "expectedVersion",
+        "expectedUpstreamCommit",
+        "observedVersion",
+        "acquisitionURL",
+        "installerSha256",
+        "executableSha256",
+        "codeDirectoryHash",
+        "requiredFileSetEvidenceSha256",
+        "identityMode",
+        "identityKey",
+        "publisherStatus",
+        "publisherVerified",
+        "validation",
+        "rawEvidenceSha256",
+        "notes"
+      ],
+      "properties": {
+        "delivery": {
+          "const": "external-official-installation"
+        },
+        "expectedVersion": {
+          "const": "0.77-7-g04bde0df"
+        },
+        "expectedUpstreamCommit": {
+          "const": "04bde0df87ee7c0e2f0151b51bb2cc22c88541da"
+        },
+        "observedVersion": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "acquisitionURL": {
+          "$ref": "#/$defs/nullableHttpsURL"
+        },
+        "installerSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "executableSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "codeDirectoryHash": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40,64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requiredFileSetEvidenceSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "identityMode": {
+          "enum": [
+            "strict-developer-id",
+            "hash-only"
+          ]
+        },
+        "identityKey": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "publisherStatus": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "publisherVerified": {
+          "$ref": "#/$defs/nullableBoolean"
+        },
+        "validation": {
+          "$ref": "#/$defs/check"
+        },
+        "rawEvidenceSha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "notes": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "sha256",
+        "sourceURL",
+        "legalBasis"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "homebrew-elf",
+                "user-owned-game-image"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/nullableSha256"
+        },
+        "sourceURL": {
+          "$ref": "#/$defs/nullableHttpsURL"
+        },
+        "legalBasis": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "functionalTests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture",
+        "externalCoreDiscovery",
+        "launch",
+        "graphics",
+        "audio",
+        "controller",
+        "save",
+        "stop",
+        "relaunch"
+      ],
+      "properties": {
+        "fixture": {
+          "$ref": "#/$defs/fixture"
+        },
+        "externalCoreDiscovery": {
+          "$ref": "#/$defs/check"
+        },
+        "launch": {
+          "$ref": "#/$defs/check"
+        },
+        "graphics": {
+          "$ref": "#/$defs/check"
+        },
+        "audio": {
+          "$ref": "#/$defs/check"
+        },
+        "controller": {
+          "$ref": "#/$defs/check"
+        },
+        "save": {
+          "$ref": "#/$defs/check"
+        },
+        "stop": {
+          "$ref": "#/$defs/check"
+        },
+        "relaunch": {
+          "$ref": "#/$defs/check"
+        }
+      }
+    },
+    "systemTests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "standardUser",
+        "removal",
+        "wrapperNetworkSilence"
+      ],
+      "properties": {
+        "standardUser": {
+          "$ref": "#/$defs/check"
+        },
+        "removal": {
+          "$ref": "#/$defs/check"
+        },
+        "wrapperNetworkSilence": {
+          "$ref": "#/$defs/check"
+        }
+      }
+    },
+    "tester": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "role",
+        "startedAt",
+        "completedAt",
+        "timezone",
+        "notes"
+      ],
+      "properties": {
+        "alias": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "role": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "startedAt": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "timezone": {
+          "$ref": "#/$defs/nullableShortString"
+        },
+        "notes": {
+          "$ref": "#/$defs/nullableString"
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observedOnNamedHardware",
+        "finalArtifactHashMatched",
+        "valuesRecordedWithoutFabrication"
+      ],
+      "properties": {
+        "observedOnNamedHardware": {
+          "$ref": "#/$defs/nullableBoolean"
+        },
+        "finalArtifactHashMatched": {
+          "$ref": "#/$defs/nullableBoolean"
+        },
+        "valuesRecordedWithoutFabrication": {
+          "$ref": "#/$defs/nullableBoolean"
+        }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relativePath",
+        "sha256",
+        "mediaType",
+        "description"
+      ],
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^attachments/(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)(?!.*//).+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    }
+  }
+}

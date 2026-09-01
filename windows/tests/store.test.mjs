@@ -3,10 +3,13 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { BUNDLED_DEMO_TERMS_REVISION } from "../app/lib/bundled-demo.mjs";
 import {
   addGamePaths,
   defaultState,
   loadState,
+  reconcileBundledDemo,
+  removeGameByID,
   sanitizeState,
   saveState,
 } from "../app/lib/store.mjs";
@@ -23,6 +26,9 @@ test("default state starts with consent and modified-core trust disabled", () =>
       modifiedCoreConsentKey: null,
       standardCoreConsentKey: null,
       armCompatibilityConsentKey: null,
+      bundledDemoDismissed: false,
+      bundledDemoTermsAccepted: false,
+      bundledDemoTermsRevision: null,
     },
     games: [],
   });
@@ -44,7 +50,9 @@ test("sanitizeState fail-closes malformed preferences and game records", () => {
       { filePath: "C:\\Games\\malware.exe" },
     ],
   });
-  assert.deepEqual(sanitized, defaultState());
+  const migratedDefault = defaultState();
+  migratedDefault.preferences.bundledDemoDismissed = true;
+  assert.deepEqual(sanitized, migratedDefault);
 });
 
 test("sanitizeState normalizes, deduplicates, bounds, and cleans persisted games", () => {
@@ -57,6 +65,9 @@ test("sanitizeState normalizes, deduplicates, bounds, and cleans persisted games
       allowModifiedCore: true,
       modifiedCoreConsentKey: "a".repeat(64),
       standardCoreConsentKey: "b".repeat(64),
+      bundledDemoDismissed: false,
+      bundledDemoTermsAccepted: true,
+      bundledDemoTermsRevision: BUNDLED_DEMO_TERMS_REVISION,
     },
     games: [
       {
@@ -89,6 +100,9 @@ test("sanitizeState normalizes, deduplicates, bounds, and cleans persisted games
   assert.equal(sanitized.preferences.allowModifiedCore, true);
   assert.equal(sanitized.preferences.modifiedCoreConsentKey, "a".repeat(64));
   assert.equal(sanitized.preferences.standardCoreConsentKey, "b".repeat(64));
+  assert.equal(sanitized.preferences.bundledDemoDismissed, false);
+  assert.equal(sanitized.preferences.bundledDemoTermsAccepted, true);
+  assert.equal(sanitized.preferences.bundledDemoTermsRevision, BUNDLED_DEMO_TERMS_REVISION);
   assert.equal(sanitized.games.length, 2);
   assert.equal(sanitized.games[0].filePath, "C:\\Games\\Game.iso");
   assert.equal(sanitized.games[0].title, "Title One");
@@ -96,6 +110,77 @@ test("sanitizeState normalizes, deduplicates, bounds, and cleans persisted games
   assert.equal(sanitized.games[0].totalPlaySeconds, 0);
   assert.notEqual(sanitized.games[1].id, "same-id");
   assert.equal(sanitized.games[1].totalPlaySeconds, 100_000_000);
+});
+
+test("bundled demo is first-run-only, deterministic, path-refreshed, and not re-added after removal", () => {
+  const firstPath = "C:\\Program Files\\PS2 Emu\\resources\\PS2SDK-Cube-Demo\\ps2sdk-cube.elf";
+  const updatedPath = "D:\\PS2 Emu\\resources\\PS2SDK-Cube-Demo\\ps2sdk-cube.elf";
+  const first = reconcileBundledDemo(defaultState(), firstPath, "2026-09-01T00:00:00.000Z");
+  assert.equal(first.games.length, 1);
+  assert.deepEqual(first.games[0], {
+    id: "ps2sdk-cube-demo",
+    filePath: firstPath,
+    title: "PS2SDK Cube Demo",
+    favorite: false,
+    addedAt: "2026-09-01T00:00:00.000Z",
+    lastPlayedAt: null,
+    totalPlaySeconds: 0,
+  });
+
+  first.games[0].title = "tampered title";
+  first.games[0].favorite = true;
+  first.games[0].totalPlaySeconds = 12;
+  const refreshed = reconcileBundledDemo(first, updatedPath);
+  assert.equal(refreshed.games.length, 1);
+  assert.equal(refreshed.games[0].id, "ps2sdk-cube-demo");
+  assert.equal(refreshed.games[0].title, "PS2SDK Cube Demo");
+  assert.equal(refreshed.games[0].filePath, updatedPath);
+  assert.equal(refreshed.games[0].favorite, true);
+  assert.equal(refreshed.games[0].totalPlaySeconds, 12);
+
+  const removed = removeGameByID(refreshed, "ps2sdk-cube-demo");
+  assert.equal(removed.preferences.bundledDemoDismissed, true);
+  assert.equal(removed.games.length, 0);
+  assert.equal(reconcileBundledDemo(removed, updatedPath).games.length, 0);
+});
+
+test("pre-demo existing libraries migrate without silently adding the bundled demo", () => {
+  const legacy = sanitizeState({
+    schemaVersion: 1,
+    preferences: { language: "en", consentAccepted: true },
+    games: [{ filePath: "C:\\Games\\Existing.iso", title: "Existing" }],
+  });
+  assert.equal(legacy.preferences.bundledDemoDismissed, true);
+  assert.equal(legacy.preferences.bundledDemoTermsAccepted, false);
+  assert.equal(legacy.preferences.bundledDemoTermsRevision, null);
+  const reconciled = reconcileBundledDemo(
+    legacy,
+    "C:\\Program Files\\PS2 Emu\\resources\\PS2SDK-Cube-Demo\\ps2sdk-cube.elf",
+  );
+  assert.deepEqual(reconciled.games.map((game) => game.title), ["Existing"]);
+});
+
+test("bundled demo assent is bound to the exact reviewed terms revision", () => {
+  const staleBoolean = sanitizeState({
+    preferences: {
+      bundledDemoDismissed: false,
+      bundledDemoTermsAccepted: true,
+    },
+    games: [],
+  });
+  assert.equal(staleBoolean.preferences.bundledDemoTermsAccepted, false);
+  assert.equal(staleBoolean.preferences.bundledDemoTermsRevision, null);
+
+  const current = sanitizeState({
+    preferences: {
+      bundledDemoDismissed: false,
+      bundledDemoTermsAccepted: true,
+      bundledDemoTermsRevision: BUNDLED_DEMO_TERMS_REVISION,
+    },
+    games: [],
+  });
+  assert.equal(current.preferences.bundledDemoTermsAccepted, true);
+  assert.equal(current.preferences.bundledDemoTermsRevision, BUNDLED_DEMO_TERMS_REVISION);
 });
 
 test("addGamePaths accepts only supported absolute paths and deduplicates case-insensitively", () => {

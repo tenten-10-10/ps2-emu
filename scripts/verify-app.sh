@@ -11,6 +11,9 @@ bundle_play="${PS2_BUNDLE_PLAY:-1}"
 target_arch="${PS2_TARGET_ARCH:-arm64}"
 require_release_signature="${REQUIRE_RELEASE_SIGNATURE:-0}"
 core_app="$app_path/Contents/Helpers/Play.app"
+fixture_source="$project_root/Resources/Fixtures"
+fixture_bundle="$app_path/Contents/Resources/Fixtures"
+fixture_hash="1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584"
 
 case "$bundle_play" in
   0 | 1) ;;
@@ -39,6 +42,65 @@ esac
 if [[ ! -x "$app_path/Contents/MacOS/PS2Emulator" ]]; then
   print -u2 "App bundle not found or incomplete: $app_path"
   exit 66
+fi
+
+"$script_dir/verify-bundled-homebrew.sh"
+if [[ ! -d "$fixture_bundle" || -L "$fixture_bundle" ]]; then
+  print -u2 "Bundled homebrew fixture directory is missing or is a symlink: $fixture_bundle"
+  exit 66
+fi
+reviewed_fixture_paths="$(
+  cd "$fixture_source"
+  /usr/bin/find . \( -type f -o -type l \) -print | LC_ALL=C /usr/bin/sort
+)"
+bundled_fixture_paths="$(
+  cd "$fixture_bundle"
+  /usr/bin/find . \( -type f -o -type l \) -print | LC_ALL=C /usr/bin/sort
+)"
+if [[ "$bundled_fixture_paths" != "$reviewed_fixture_paths" ]]; then
+  print -u2 "Bundled homebrew fixture tree differs from the exact reviewed allowlist."
+  print -u2 "Expected:\n$reviewed_fixture_paths"
+  print -u2 "Found:\n$bundled_fixture_paths"
+  exit 74
+fi
+for fixture_name in \
+  ps2sdk-cube.elf \
+  PS2SDK-AFL-2.0.txt \
+  PS2SDK-CUBE-NOTICE.md \
+  NEWLIB-COPYING.txt \
+  GCC-COPYING.RUNTIME.txt \
+  GCC-COPYING3.txt \
+  source/cube.c \
+  source/mesh_data.c \
+  source/Makefile; do
+  source_file="$fixture_source/$fixture_name"
+  bundled_file="$fixture_bundle/$fixture_name"
+  if [[ ! -f "$bundled_file" || -L "$bundled_file" ]]; then
+    print -u2 "Required bundled homebrew fixture file is missing or is a symlink: $bundled_file"
+    exit 66
+  fi
+  if ! /usr/bin/cmp -s "$source_file" "$bundled_file"; then
+    print -u2 "Bundled homebrew fixture file differs from the reviewed source: $bundled_file"
+    exit 74
+  fi
+done
+actual_fixture_hash="$(/usr/bin/shasum -a 256 "$fixture_bundle/ps2sdk-cube.elf" | /usr/bin/awk '{print $1}')"
+if [[ "$actual_fixture_hash" != "$fixture_hash" ]]; then
+  print -u2 "Bundled PS2SDK Cube Demo hash mismatch: $actual_fixture_hash"
+  exit 74
+fi
+
+unexpected_game_payloads="$(
+  /usr/bin/find "$app_path/Contents/Resources" \( -type f -o -type l \) \( \
+    -iname '*.elf' -o -iname '*.iso' -o -iname '*.mds' -o -iname '*.isz' -o \
+    -iname '*.cso' -o -iname '*.cue' -o -iname '*.chd' -o -iname '*.rom' -o \
+    -iname '*.bin' \
+  \) ! -path "$fixture_bundle/ps2sdk-cube.elf" -print
+)"
+if [[ -n "$unexpected_game_payloads" ]]; then
+  print -u2 "App contains an unapproved game, disc, ROM, or homebrew payload:"
+  print -u2 -- "$unexpected_game_payloads"
+  exit 74
 fi
 
 /usr/bin/plutil -lint "$app_path/Contents/Info.plist"
@@ -172,4 +234,5 @@ else
   print "Distribution mode verified: external Play! core (Play.app absent)"
 fi
 print "Target architecture verified: $target_arch"
+print "Bundled homebrew verified: PS2SDK Cube Demo ($fixture_hash)"
 print "Verification complete: $app_path"

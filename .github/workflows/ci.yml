@@ -34,10 +34,14 @@ jobs:
         env:
           SOURCE_REVISION: ${{ github.sha }}
         run: ./scripts/verify-release-source.sh
+      - name: Test the exact bundled-homebrew allowlist
+        run: ./scripts/test-bundled-homebrew.sh
       - name: Test the Swift launcher
         run: swift test
       - name: Verify four-platform release metadata
         run: node scripts/verify-release-manifest.mjs
+      - name: Verify fail-closed release evidence and draft automation
+        run: node scripts/test-release-automation.mjs
 
   macos-launcher:
     name: macOS ${{ matrix.arch }} external-core launcher

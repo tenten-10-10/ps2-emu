@@ -5,6 +5,14 @@ import XCTest
 @testable import PS2Emulator
 
 final class CoreTests: XCTestCase {
+    private var bundledDemoFixtureURL: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources/Fixtures/ps2sdk-cube.elf")
+    }
+
     func testProductRenamePreservesBundleIdentityAndExistingUserDataPaths() throws {
         XCTAssertEqual(AppIdentity.displayName, "PS2 Emu")
 
@@ -90,6 +98,142 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(second.games.count, 1)
         XCTAssertTrue(second.games[0].isFavorite)
         XCTAssertEqual(second.games[0].title, "A Game")
+    }
+
+    @MainActor
+    func testBundledDemoAppearsOnlyForANewLibraryAndRemovalPersists() throws {
+        try BundledHomebrewDemo.validateFile(at: bundledDemoFixtureURL)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let storage = root.appendingPathComponent("library.json")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let first = GameLibrary(storageURL: storage, bundledDemoURL: bundledDemoFixtureURL)
+        let demo = try XCTUnwrap(first.games.first)
+        XCTAssertEqual(first.games.count, 1)
+        XCTAssertEqual(demo.id, BundledHomebrewDemo.id)
+        XCTAssertEqual(demo.id.uuidString, "5940D0E6-3F5E-5D32-9C63-E5BE6E1D9F25")
+        XCTAssertEqual(demo.title, "PS2SDK Cube Demo")
+        XCTAssertEqual(demo.kind, .homebrewELF)
+        XCTAssertTrue(demo.isBundledHomebrewDemo)
+
+        first.rename(demo.id, to: "Commercial Game")
+        XCTAssertEqual(first.games.first?.title, "PS2SDK Cube Demo")
+
+        first.selectedGameID = demo.id
+        first.removeSelected()
+        XCTAssertTrue(first.games.isEmpty)
+
+        let reopened = GameLibrary(storageURL: storage, bundledDemoURL: bundledDemoFixtureURL)
+        XCTAssertTrue(reopened.games.isEmpty, "A user-removed demo must not be added back")
+    }
+
+    func testBundledDemoLegalDocumentsAreAvailableOffline() throws {
+        let projectRoot = bundledDemoFixtureURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let documents = [
+            "Fixtures/PS2SDK-CUBE-NOTICE.md",
+            "Fixtures/PS2SDK-AFL-2.0.txt",
+            "Fixtures/NEWLIB-COPYING.txt",
+            "Fixtures/GCC-COPYING.RUNTIME.txt",
+            "Fixtures/GCC-COPYING3.txt"
+        ]
+        for document in documents {
+            let contents = try XCTUnwrap(
+                LegalDocumentLoader.load(fileName: document, currentDirectoryURL: projectRoot),
+                "Missing offline legal document: \(document)"
+            )
+            XCTAssertFalse(contents.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        XCTAssertTrue(
+            LegalDocumentLoader.load(
+                fileName: "Fixtures/PS2SDK-CUBE-NOTICE.md",
+                currentDirectoryURL: projectRoot
+            )?
+                .contains(BundledHomebrewDemo.expectedSHA256) == true
+        )
+    }
+
+    @MainActor
+    func testBundledDemoBundlePathRefreshPreservesUserMetadata() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let storage = root.appendingPathComponent("library.json")
+        let oldFixture = root.appendingPathComponent("Old App/Contents/Resources/Fixtures/ps2sdk-cube.elf")
+        let newFixture = root.appendingPathComponent("New App/Contents/Resources/Fixtures/ps2sdk-cube.elf")
+        try FileManager.default.createDirectory(
+            at: oldFixture.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: newFixture.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.copyItem(at: bundledDemoFixtureURL, to: oldFixture)
+        try FileManager.default.copyItem(at: bundledDemoFixtureURL, to: newFixture)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let first = GameLibrary(storageURL: storage, bundledDemoURL: oldFixture)
+        let id = try XCTUnwrap(first.games.first?.id)
+        first.toggleFavorite(id)
+        first.recordPlayStarted(id)
+        first.recordPlayFinished(id, elapsed: 42)
+        let originalAddedAt = try XCTUnwrap(first.games.first?.addedAt)
+
+        let reopened = GameLibrary(storageURL: storage, bundledDemoURL: newFixture)
+        let refreshed = try XCTUnwrap(reopened.games.first)
+        XCTAssertEqual(refreshed.id, BundledHomebrewDemo.id)
+        XCTAssertEqual(refreshed.title, "PS2SDK Cube Demo")
+        XCTAssertEqual(refreshed.path, newFixture.standardizedFileURL.path)
+        XCTAssertEqual(refreshed.addedAt.timeIntervalSince(originalAddedAt), 0, accuracy: 1)
+        XCTAssertNotNil(refreshed.lastPlayedAt)
+        XCTAssertEqual(refreshed.totalPlaySeconds, 42)
+        XCTAssertTrue(refreshed.isFavorite)
+    }
+
+    @MainActor
+    func testBundledDemoTamperingFailsClosedBeforeCoreLaunch() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let storage = root.appendingPathComponent("library.json")
+        let tampered = root.appendingPathComponent("ps2sdk-cube.elf")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data(repeating: 0x41, count: BundledHomebrewDemo.expectedByteCount).write(to: tampered)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let library = GameLibrary(storageURL: storage, bundledDemoURL: tampered)
+        XCTAssertTrue(library.games.isEmpty)
+        XCTAssertTrue(library.lastError?.contains("SHA-256") == true)
+
+        let game = BundledHomebrewDemo.game(url: tampered)
+        let launcher = EmulatorLauncher()
+        XCTAssertThrowsError(
+            try launcher.launch(game: game, fullscreen: false) { _, _ in }
+        ) { error in
+            guard case BundledHomebrewDemoError.hashMismatch = error else {
+                return XCTFail("Expected a hash mismatch before core resolution, found \(error)")
+            }
+        }
+    }
+
+    func testBundledDemoStableIdentityCannotBeRedirectedToACopiedELF() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let redirected = root.appendingPathComponent("redirected-cube.elf")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: bundledDemoFixtureURL, to: redirected)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let game = BundledHomebrewDemo.game(url: redirected)
+        XCTAssertThrowsError(
+            try BundledHomebrewDemo.validateBeforeLaunch(
+                game,
+                bundledURL: bundledDemoFixtureURL
+            )
+        ) { error in
+            guard case BundledHomebrewDemoError.metadataMismatch = error else {
+                return XCTFail("Expected metadata mismatch, found \(error)")
+            }
+        }
     }
 
     @MainActor
@@ -279,13 +423,20 @@ final class CoreTests: XCTestCase {
 
         let initial = AppPreferences(defaults: defaults)
         XCTAssertFalse(initial.hasAcceptedSafetyNotice)
+        XCTAssertFalse(initial.hasAcceptedBundledDemoLicense)
+        XCTAssertFalse(initial.hasAcceptedRequiredNotices)
         XCTAssertEqual(initial.language, .system)
 
         initial.hasAcceptedSafetyNotice = true
+        XCTAssertFalse(initial.hasAcceptedRequiredNotices)
+        initial.hasAcceptedBundledDemoLicense = true
+        XCTAssertTrue(initial.hasAcceptedRequiredNotices)
         initial.language = .japanese
 
         let restored = AppPreferences(defaults: defaults)
         XCTAssertTrue(restored.hasAcceptedSafetyNotice)
+        XCTAssertTrue(restored.hasAcceptedBundledDemoLicense)
+        XCTAssertTrue(restored.hasAcceptedRequiredNotices)
         XCTAssertEqual(restored.language, .japanese)
     }
 

@@ -89,9 +89,38 @@ fi
 for required_document in \
   "$mount_point/Licenses and Notices/PRIVACY.md" \
   "$mount_point/Licenses and Notices/SECURITY.md" \
+  "$mount_point/Licenses and Notices/PS2SDK-AFL-2.0.txt" \
+  "$mount_point/Licenses and Notices/PS2SDK-CUBE-NOTICE.md" \
+  "$mount_point/Licenses and Notices/NEWLIB-COPYING.txt" \
+  "$mount_point/Licenses and Notices/GCC-COPYING.RUNTIME.txt" \
+  "$mount_point/Licenses and Notices/GCC-COPYING3.txt" \
+  "$mount_point/Licenses and Notices/PS2SDK-Cube-Source/cube.c" \
+  "$mount_point/Licenses and Notices/PS2SDK-Cube-Source/mesh_data.c" \
+  "$mount_point/Licenses and Notices/PS2SDK-Cube-Source/Makefile" \
   "$mount_point/Licenses and Notices/PS2-Emu-License.txt"; do
   if [[ ! -f "$required_document" ]]; then
     print -u2 "Required public document is missing: $required_document"
+    exit 74
+  fi
+done
+for license_name in \
+  PS2SDK-AFL-2.0.txt \
+  PS2SDK-CUBE-NOTICE.md \
+  NEWLIB-COPYING.txt \
+  GCC-COPYING.RUNTIME.txt \
+  GCC-COPYING3.txt; do
+  if ! /usr/bin/cmp -s \
+    "$project_root/Resources/Fixtures/$license_name" \
+    "$mount_point/Licenses and Notices/$license_name"; then
+    print -u2 "Bundled homebrew notice differs from the reviewed source: $license_name"
+    exit 74
+  fi
+done
+for source_name in cube.c mesh_data.c Makefile; do
+  if ! /usr/bin/cmp -s \
+    "$project_root/Resources/Fixtures/source/$source_name" \
+    "$mount_point/Licenses and Notices/PS2SDK-Cube-Source/$source_name"; then
+    print -u2 "Bundled Cube Demo source differs from the reviewed source: $source_name"
     exit 74
   fi
 done

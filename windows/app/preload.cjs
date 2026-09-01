@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld("ps2", Object.freeze({
   openCoreSettings: () => ipcRenderer.invoke("core:settings"),
   stopCore: () => ipcRenderer.invoke("core:stop"),
   showLogs: () => ipcRenderer.invoke("logs:show"),
+  openDemoLicense: () => ipcRenderer.invoke("demo:open-license"),
+  openDemoNotice: () => ipcRenderer.invoke("demo:open-notice"),
   onState: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, value) => callback(value);

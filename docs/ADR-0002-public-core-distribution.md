@@ -32,7 +32,8 @@ Free-of-charge distribution does not remove these obligations.
 
 The first public PS2 Emu package will **not contain `Play.app`**. It will:
 
-- provide the native library/launcher only;
+- provide the native library/launcher plus the separately licensed,
+  hash-pinned PS2SDK Cube Demo validation fixture and its required notices;
 - discover an independently installed official Play! application in standard
   macOS application locations;
 - link to the exact commit-addressed Play! object published by the official

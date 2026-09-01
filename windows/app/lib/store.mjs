@@ -1,6 +1,11 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  BUNDLED_DEMO_ID,
+  BUNDLED_DEMO_TERMS_REVISION,
+  BUNDLED_DEMO_TITLE,
+} from "./bundled-demo.mjs";
 import { displayTitle, isSupportedWindowsGamePath } from "./core.mjs";
 
 const MAX_GAMES = 10_000;
@@ -17,6 +22,9 @@ export function defaultState() {
       modifiedCoreConsentKey: null,
       standardCoreConsentKey: null,
       armCompatibilityConsentKey: null,
+      bundledDemoDismissed: false,
+      bundledDemoTermsAccepted: false,
+      bundledDemoTermsRevision: null,
     },
     games: [],
   };
@@ -54,6 +62,10 @@ export function sanitizeState(value) {
   const state = defaultState();
   if (!value || typeof value !== "object" || Array.isArray(value)) return state;
 
+  // A pre-demo library is an existing user library, not a first run. Absence of
+  // the marker migrates fail-closed so upgrades never inject the demo later.
+  state.preferences.bundledDemoDismissed = true;
+
   const preferences = value.preferences;
   if (preferences && typeof preferences === "object" && !Array.isArray(preferences)) {
     state.preferences.language = ["system", "en", "ja"].includes(preferences.language)
@@ -82,6 +94,15 @@ export function sanitizeState(value) {
       preferences.armCompatibilityConsentKey,
       200,
     );
+    if (Object.hasOwn(preferences, "bundledDemoDismissed")) {
+      state.preferences.bundledDemoDismissed = preferences.bundledDemoDismissed === true;
+    }
+    const bundledDemoTermsRevision = safeString(preferences.bundledDemoTermsRevision, 64);
+    state.preferences.bundledDemoTermsRevision = bundledDemoTermsRevision === BUNDLED_DEMO_TERMS_REVISION
+      ? bundledDemoTermsRevision
+      : null;
+    state.preferences.bundledDemoTermsAccepted = preferences.bundledDemoTermsAccepted === true
+      && state.preferences.bundledDemoTermsRevision === BUNDLED_DEMO_TERMS_REVISION;
   }
 
   const seenPaths = new Set();
@@ -119,6 +140,53 @@ export function addGamePaths(state, filePaths) {
       totalPlaySeconds: 0,
     });
   }
+  return next;
+}
+
+export function reconcileBundledDemo(state, filePath, addedAt = new Date().toISOString()) {
+  if (!isSupportedWindowsGamePath(filePath)) {
+    throw new Error("The bundled PS2SDK Cube Demo path must be an absolute Windows ELF path.");
+  }
+  const next = sanitizeState(state);
+  if (next.preferences.bundledDemoDismissed) {
+    next.games = next.games.filter((game) => game.id !== BUNDLED_DEMO_ID);
+    return next;
+  }
+
+  const normalized = path.win32.normalize(filePath);
+  const pathKey = normalized.toLocaleLowerCase("en-US");
+  const existing = next.games.find((game) => game.id === BUNDLED_DEMO_ID);
+  next.games = next.games.filter((game) => (
+    game.id !== BUNDLED_DEMO_ID
+    && game.filePath.toLocaleLowerCase("en-US") !== pathKey
+  ));
+
+  if (existing) {
+    next.games.unshift({
+      ...existing,
+      id: BUNDLED_DEMO_ID,
+      filePath: normalized,
+      title: BUNDLED_DEMO_TITLE,
+    });
+  } else if (next.games.length < MAX_GAMES) {
+    next.games.unshift({
+      id: BUNDLED_DEMO_ID,
+      filePath: normalized,
+      title: BUNDLED_DEMO_TITLE,
+      favorite: false,
+      addedAt: safeDate(addedAt) || new Date().toISOString(),
+      lastPlayedAt: null,
+      totalPlaySeconds: 0,
+    });
+  }
+  return next;
+}
+
+export function removeGameByID(state, gameID) {
+  if (typeof gameID !== "string") throw new Error("Invalid game identifier.");
+  const next = sanitizeState(state);
+  next.games = next.games.filter((game) => game.id !== gameID);
+  if (gameID === BUNDLED_DEMO_ID) next.preferences.bundledDemoDismissed = true;
   return next;
 }
 

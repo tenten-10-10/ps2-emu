@@ -46,6 +46,8 @@ if [[ "$bundle_play" == "1" ]]; then
   "$script_dir/validate-play-core.sh" "$core_app"
 fi
 
+"$script_dir/verify-bundled-homebrew.sh"
+
 temp_root="$(mktemp -d "${TMPDIR:-/tmp}/ps2-emulator-build.XXXXXX")"
 cleanup() {
   if [[ -d "$temp_root" && "$temp_root" == *ps2-emulator-build.* ]]; then
@@ -83,7 +85,7 @@ print "Using Apple Swift toolchain: $swift_path"
 temp_app="$temp_root/$app_name"
 mkdir -p \
   "$temp_app/Contents/MacOS" \
-  "$temp_app/Contents/Resources"
+  "$temp_app/Contents/Resources/Fixtures"
 
 if [[ "$bundle_play" == "1" ]]; then
   mkdir -p "$temp_app/Contents/Helpers"
@@ -95,6 +97,9 @@ bin_path="$("$swift_path" build --package-path "$project_root" --scratch-path "$
 
 /usr/bin/ditto "$bin_path/PS2Emulator" "$temp_app/Contents/MacOS/PS2Emulator"
 /usr/bin/ditto "$project_root/Resources/Info.plist" "$temp_app/Contents/Info.plist"
+/usr/bin/ditto \
+  "$project_root/Resources/Fixtures" \
+  "$temp_app/Contents/Resources/Fixtures"
 if [[ "$bundle_play" == "1" ]]; then
   /usr/libexec/PlistBuddy -c "Add :PS2BundledPlayCore bool true" "$temp_app/Contents/Info.plist"
   /usr/bin/ditto "$project_root/Resources/Play-License.txt" "$temp_app/Contents/Resources/Play-License.txt"

@@ -8,6 +8,7 @@
       openPlaySettings: "Open Play! settings",
       lawfulOnly: "Use only lawfully owned game dumps or authorized homebrew.",
       showLogs: "Show logs",
+      about: "About",
       workspace: "LOCAL GAME WORKSPACE",
       yourLibrary: "Your library",
       search: "Search",
@@ -37,10 +38,20 @@
       done: "Done",
       noticeTitle: "Before you continue",
       noticeLead: "PS2 Emu is an independent launcher. Play! opens separately and game compatibility is not guaranteed.",
-      noticeLawful: "I will use only game dumps I may lawfully use or authorized homebrew. No games or BIOS are included.",
+      noticeLawful: "I will use only game dumps I may lawfully use or authorized homebrew. No commercial games or BIOS are included.",
       noticePrivacy: "I understand that local file paths, library history and capped diagnostic logs are stored on this PC.",
       noticeAffiliation: "I understand this project is not affiliated with or endorsed by Sony, PlayStation or Play!.",
       noticeHashOnly: "I understand that standard Windows Play! is unsigned and accepted only by exact hashes; its publisher is unverified.",
+      noticeDemo: "I have reviewed and accept the Academic Free License 2.0 terms for the bundled official ps2dev/ps2sdk Cube Demo. It is the only bundled playable content; no commercial games are included.",
+      aboutEyebrow: "OPEN-SOURCE SAMPLE",
+      aboutTitle: "About PS2 Emu",
+      aboutDemoTitle: "PS2SDK Cube Demo",
+      aboutDemoSource: "Official source: ps2dev/ps2sdk samples/cube · License: Academic Free License 2.0 (AFL-2.0).",
+      aboutDemoIntegrity: "The ELF is stored outside app.asar and checked against this exact SHA-256 at packaging, verification, and immediately before launch:",
+      aboutRuntimeNotice: "The accompanying notice records statically linked runtime provenance. Public distribution remains gated on final legal review.",
+      aboutNoCommercial: "No commercial games, PlayStation 2 BIOS, Play.exe, or Play! core are included.",
+      readDemoLicense: "Read AFL-2.0 terms",
+      readDemoNotice: "Read provenance & notices",
       continue: "Continue",
       play: "Play",
       remove: "Remove",
@@ -60,6 +71,7 @@
       openPlaySettings: "Play! の設定を開く",
       lawfulOnly: "適法に所有・利用できるゲームデータまたは許可済みhomebrewだけを使用してください。",
       showLogs: "ログを表示",
+      about: "このアプリについて",
       workspace: "ローカルゲーム ワークスペース",
       yourLibrary: "ゲームライブラリ",
       search: "検索",
@@ -89,10 +101,20 @@
       done: "完了",
       noticeTitle: "続行する前に",
       noticeLead: "PS2 Emuは独立したランチャーです。Play!は別ウィンドウで開き、ゲーム互換性は保証されません。",
-      noticeLawful: "適法に利用できるゲームダンプまたは許可済みhomebrewだけを使用します。ゲームやBIOSは同梱されません。",
+      noticeLawful: "適法に利用できるゲームダンプまたは許可済みhomebrewだけを使用します。商用ゲームやBIOSは同梱されません。",
       noticePrivacy: "このPCにローカルファイルパス、ライブラリ履歴、上限付き診断ログが保存されることを理解しました。",
       noticeAffiliation: "Sony、PlayStation、Play!との提携・承認関係がないことを理解しました。",
       noticeHashOnly: "標準Windows Play!は未署名で、完全一致するhashだけで許可され、発行元は未検証であることを理解しました。",
+      noticeDemo: "同梱する公式ps2dev/ps2sdk Cube DemoのAcademic Free License 2.0全文を確認し、条件を受諾します。同梱する実行可能コンテンツはこれだけで、商用ゲームは含みません。",
+      aboutEyebrow: "オープンソース サンプル",
+      aboutTitle: "PS2 Emuについて",
+      aboutDemoTitle: "PS2SDK Cube Demo",
+      aboutDemoSource: "公式ソース: ps2dev/ps2sdk samples/cube · ライセンス: Academic Free License 2.0 (AFL-2.0)。",
+      aboutDemoIntegrity: "ELFはapp.asarの外に置き、package作成・検証時と起動直前に次のSHA-256との完全一致を確認します:",
+      aboutRuntimeNotice: "同梱NOTICEに静的linkされたruntimeの来歴を記録しています。一般公開には最終法務確認が必要です。",
+      aboutNoCommercial: "商用ゲーム、PlayStation 2 BIOS、Play.exe、Play!コアは同梱しません。",
+      readDemoLicense: "AFL-2.0全文を読む",
+      readDemoNotice: "来歴・noticeを読む",
       continue: "続ける",
       play: "起動",
       remove: "削除",
@@ -128,6 +150,7 @@
     libraryCount: document.querySelector("[data-library-count]"),
     search: document.querySelector("[data-search]"),
     settingsDialog: document.querySelector("[data-settings-dialog]"),
+    aboutDialog: document.querySelector("[data-about-dialog]"),
     noticeDialog: document.querySelector("[data-notice-dialog]"),
     language: document.querySelector("[data-language]"),
     fullscreen: document.querySelector("[data-fullscreen]"),
@@ -138,7 +161,9 @@
     noticePrivacy: document.querySelector("[data-notice-privacy]"),
     noticeAffiliation: document.querySelector("[data-notice-affiliation]"),
     noticeHashOnly: document.querySelector("[data-notice-hash-only]"),
+    noticeDemo: document.querySelector("[data-notice-demo]"),
     noticeContinue: document.querySelector("[data-notice-continue]"),
+    demoSha: document.querySelector("[data-demo-sha]"),
     toast: document.querySelector("[data-toast]"),
   };
 
@@ -269,12 +294,15 @@
       ? `${nextState.core.message}\n${nextState.core.path}`
       : nextState.core.message;
     elements.version.textContent = `PS2 Emu ${nextState.appVersion} · ${nextState.architecture}`;
+    elements.demoSha.textContent = nextState.bundledDemo.sha256;
     renderLibrary();
 
-    if (nextState.preferences.consentAccepted !== true && !elements.noticeDialog.open) {
+    const noticeAccepted = nextState.preferences.consentAccepted === true
+      && nextState.preferences.bundledDemoTermsAccepted === true;
+    if (!noticeAccepted && !elements.noticeDialog.open) {
       elements.noticeLanguage.value = activeLanguage;
       elements.noticeDialog.showModal();
-    } else if (nextState.preferences.consentAccepted === true && elements.noticeDialog.open) {
+    } else if (noticeAccepted && elements.noticeDialog.open) {
       elements.noticeDialog.close();
     }
   }
@@ -285,6 +313,7 @@
       && elements.noticePrivacy.checked
       && elements.noticeAffiliation.checked
       && elements.noticeHashOnly.checked
+      && elements.noticeDemo.checked
     );
   }
 
@@ -293,7 +322,14 @@
   });
   document.querySelector("[data-add-folder]").addEventListener("click", () => perform(() => window.ps2.addFolder()));
   document.querySelector("[data-open-settings]").addEventListener("click", () => elements.settingsDialog.showModal());
+  document.querySelector("[data-open-about]").addEventListener("click", () => elements.aboutDialog.showModal());
   document.querySelector("[data-show-logs]").addEventListener("click", () => perform(() => window.ps2.showLogs()));
+  document.querySelectorAll("[data-open-demo-license]").forEach((button) => {
+    button.addEventListener("click", () => perform(() => window.ps2.openDemoLicense()));
+  });
+  document.querySelectorAll("[data-open-demo-notice]").forEach((button) => {
+    button.addEventListener("click", () => perform(() => window.ps2.openDemoNotice()));
+  });
   document.querySelector("[data-download-play]").addEventListener("click", () => perform(() => window.ps2.openOfficialPlayDownload()));
   document.querySelector("[data-use-standard]").addEventListener("click", () => perform(() => window.ps2.useStandardCore()));
   document.querySelector("[data-choose-core]").addEventListener("click", () => perform(() => window.ps2.chooseModifiedCore()));
@@ -314,7 +350,7 @@
     if (actionButton.dataset.action === "remove") perform(() => window.ps2.removeGame(gameID));
   });
 
-  [elements.noticeLawful, elements.noticePrivacy, elements.noticeAffiliation, elements.noticeHashOnly].forEach((checkbox) => {
+  [elements.noticeLawful, elements.noticePrivacy, elements.noticeAffiliation, elements.noticeHashOnly, elements.noticeDemo].forEach((checkbox) => {
     checkbox.addEventListener("change", syncNoticeButton);
   });
   elements.noticeLanguage.addEventListener("change", () => {
@@ -326,6 +362,7 @@
     privacyAccepted: elements.noticePrivacy.checked,
     nonAffiliationAccepted: elements.noticeAffiliation.checked,
     hashOnlyRiskAccepted: elements.noticeHashOnly.checked,
+    bundledDemoAccepted: elements.noticeDemo.checked,
     language: elements.noticeLanguage.value,
   })));
   elements.noticeDialog.addEventListener("cancel", (event) => event.preventDefault());

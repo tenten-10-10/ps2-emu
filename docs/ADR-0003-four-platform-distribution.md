@@ -33,8 +33,9 @@ and arm64 binaries.
 
 Every public candidate remains an **external-core launcher**:
 
-- no package contains `Play.app`, `Play.exe`, Qt, MoltenVK, `states.db`, a game,
-  BIOS, encryption key, or copyrighted game artwork;
+- no package contains `Play.app`, `Play.exe`, Qt, MoltenVK, `states.db`, a
+  commercial game, BIOS, encryption key, or copyrighted game artwork; the
+  exact separately licensed PS2SDK Cube Demo is the sole homebrew fixture;
 - Play! is launched with an executable path and argument array, never through a
   shell command;
 - the launcher accepts only supported local game extensions;

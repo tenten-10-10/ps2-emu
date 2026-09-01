@@ -46,6 +46,7 @@ button { color: inherit; }
 .core-panel p { margin: 10px 0; color: var(--dim); font-size: 10px; line-height: 1.55; overflow-wrap: anywhere; }
 .sidebar-foot { margin-top: auto; padding: 18px 8px 0; }
 .sidebar-foot p { margin: 0 0 12px; color: #5f6277; font-size: 9px; line-height: 1.5; }
+.sidebar-foot .text-button { display: block; margin-top: 10px; }
 .text-button { padding: 0; border: 0; color: #bbc0d2; background: transparent; font-size: 11px; text-align: left; text-decoration: underline; text-decoration-color: rgba(255,255,255,.3); text-underline-offset: 4px; cursor: pointer; }
 .text-button:hover { color: #fff; }
 .text-button:disabled { color: #55586b; cursor: default; text-decoration: none; }
@@ -124,11 +125,16 @@ select { min-height: 38px; min-width: 190px; padding: 0 10px; border: 1px solid 
 .warning-copy--hash { padding: 11px 12px; border: 1px solid rgba(255, 212, 122, .25); border-radius: 7px; color: var(--warning); background: rgba(255, 186, 70, .06); }
 .settings-dialog footer { padding-top: 22px; }
 .settings-dialog footer span { color: var(--dim); font-size: 9px; }
+.about-dialog .settings-group:last-of-type { border-bottom: 0; }
+.about-demo h3 { color: var(--cyan); }
+.integrity-hash { display: block; padding: 11px 12px; border: 1px solid var(--line); border-radius: 7px; color: #d7d9e8; background: rgba(0,0,0,.2); font-family: "Cascadia Mono", "Consolas", monospace; font-size: 10px; line-height: 1.55; overflow-wrap: anywhere; }
+.about-actions { margin-top: 13px; }
 
-.notice-dialog { width: min(760px, calc(100vw - 44px)); padding: 0; border: 1px solid var(--line-strong); border-radius: 14px; background: radial-gradient(circle at 85% 0%, rgba(139,113,255,.14), transparent 38%), #0e1020; box-shadow: 0 35px 120px rgba(0,0,0,.72); }
+.notice-dialog { width: min(760px, calc(100vw - 44px)); max-height: calc(100vh - 44px); padding: 0; overflow: auto; border: 1px solid var(--line-strong); border-radius: 14px; background: radial-gradient(circle at 85% 0%, rgba(139,113,255,.14), transparent 38%), #0e1020; box-shadow: 0 35px 120px rgba(0,0,0,.72); }
 .notice-dialog form { padding: clamp(28px, 5vw, 52px); }
 .notice-dialog h1 { margin: 0; font-size: clamp(38px, 6vw, 64px); font-weight: 610; letter-spacing: -.06em; line-height: .95; }
 .notice-lead { max-width: 590px; margin: 22px 0 30px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.notice-license-actions { margin-bottom: 18px; }
 .notice-points { border-top: 1px solid var(--line); }
 .notice-points label { display: grid; grid-template-columns: 20px 1fr; gap: 13px; padding: 16px 0; border-bottom: 1px solid var(--line); color: #c8cad8; font-size: 11px; line-height: 1.55; cursor: pointer; }
 .notice-points input { margin-top: 3px; accent-color: var(--violet); }

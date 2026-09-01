@@ -5,6 +5,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import {
+  BUNDLED_DEMO_DIRECTORY_NAME,
+  BUNDLED_DEMO_FILE_NAME,
+  BUNDLED_DEMO_ID,
+  BUNDLED_DEMO_SHA256,
+  BUNDLED_DEMO_TERMS_REVISION,
+  BUNDLED_DEMO_TITLE,
+  bundledDemoPath,
+  verifyBundledDemo,
+  verifyBundledDemoDocument,
+  verifyBundledDemoResourceSet,
+} from "./lib/bundled-demo.mjs";
+import {
   parseOfficialCoreIdentityManifest,
   verifyOfficialCoreIdentity,
 } from "./lib/core-identity.mjs";
@@ -20,7 +32,14 @@ import {
   standardCorePath,
   validateWindowsCore,
 } from "./lib/core.mjs";
-import { addGamePaths, defaultState, loadState, saveState, sanitizeState } from "./lib/store.mjs";
+import {
+  addGamePaths,
+  defaultState,
+  loadState,
+  reconcileBundledDemo,
+  removeGameByID,
+  saveState,
+} from "./lib/store.mjs";
 import { collectWindowsCoreEvidence } from "./lib/windows-core-evidence.mjs";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -39,10 +58,15 @@ const maximumScanEntries = 50_000;
 const maximumScanDepth = 24;
 const maximumLogBytes = 10 * 1024 * 1024;
 const maximumLogCount = 20;
+const bundledDemoDocuments = Object.freeze({
+  license: "PS2SDK-AFL-2.0.txt",
+  notice: "PS2SDK-CUBE-NOTICE.md",
+});
 
 let mainWindow = null;
 let state = defaultState();
 let stateFile = null;
+let bundledDemoFilePath = null;
 let ownedCoreProcess = null;
 let ownedProcessStartedAt = null;
 let ownedGameID = null;
@@ -68,6 +92,9 @@ function previewState() {
       modifiedCoreConsentKey: null,
       standardCoreConsentKey: null,
       armCompatibilityConsentKey: null,
+      bundledDemoDismissed: false,
+      bundledDemoTermsAccepted: true,
+      bundledDemoTermsRevision: BUNDLED_DEMO_TERMS_REVISION,
     },
     games: [
       {
@@ -89,9 +116,9 @@ function previewState() {
         totalPlaySeconds: 0,
       },
       {
-        id: "preview-3",
-        filePath: "C:\\Homebrew\\Orbit Lab.elf",
-        title: "Orbit Lab",
+        id: BUNDLED_DEMO_ID,
+        filePath: `C:\\Program Files\\PS2 Emu\\resources\\${BUNDLED_DEMO_DIRECTORY_NAME}\\${BUNDLED_DEMO_FILE_NAME}`,
+        title: BUNDLED_DEMO_TITLE,
         favorite: false,
         addedAt: now,
         lastPlayedAt: null,
@@ -99,6 +126,11 @@ function previewState() {
       },
     ],
   };
+}
+
+function configuredBundledDemoPath() {
+  if (app.isPackaged) return bundledDemoPath(process.resourcesPath);
+  return path.resolve(moduleDirectory, "..", "..", "Resources", "Fixtures", "ps2sdk-cube.elf");
 }
 
 function resolvedLanguage() {
@@ -109,8 +141,12 @@ function resolvedLanguage() {
 }
 
 function requireConsent() {
-  if (state.preferences.consentAccepted !== true) {
-    throw new Error("Accept the first-run safety notice before using the library, core, links, or launch actions.");
+  if (
+    state.preferences.consentAccepted !== true
+    || state.preferences.bundledDemoTermsAccepted !== true
+    || state.preferences.bundledDemoTermsRevision !== BUNDLED_DEMO_TERMS_REVISION
+  ) {
+    throw new Error("Accept the first-run safety and bundled-demo license notice before using the library, core, links, or launch actions.");
   }
 }
 
@@ -217,6 +253,14 @@ async function rendererState() {
     core: await coreSummary(),
     runtime: { ...runtime },
     officialPlayURL: OFFICIAL_PLAY_DOWNLOAD_URL,
+    bundledDemo: {
+      id: BUNDLED_DEMO_ID,
+      title: BUNDLED_DEMO_TITLE,
+      sha256: BUNDLED_DEMO_SHA256,
+      license: "Academic Free License 2.0 (AFL-2.0)",
+      officialSource: "ps2dev/ps2sdk samples/cube",
+      commercialGamesIncluded: false,
+    },
     osRelease: os.release(),
   };
 }
@@ -320,6 +364,16 @@ async function createLogWriter(title) {
 async function validatedSelectedGame(gameID) {
   const game = state.games.find((candidate) => candidate.id === gameID);
   if (!game) throw new Error("The selected game is not in the saved library.");
+  if (game.id === BUNDLED_DEMO_ID) {
+    if (!bundledDemoFilePath) throw new Error("The bundled PS2SDK Cube Demo is unavailable.");
+    const verified = await verifyBundledDemo(bundledDemoFilePath);
+    return {
+      ...game,
+      id: BUNDLED_DEMO_ID,
+      title: BUNDLED_DEMO_TITLE,
+      filePath: verified.path,
+    };
+  }
   if (!(await regularSupportedFile(game.filePath))) {
     throw new Error("The selected game file is missing, unsupported, or not a regular file.");
   }
@@ -391,9 +445,8 @@ async function launchCore({ game = null, settingsOnly = false } = {}) {
   let core = await resolveValidatedCore();
   await confirmHashOnlyStandardCore(core);
   await confirmArmCompatibility(core);
-  const selectedGame = game ? await validatedSelectedGame(game.id) : null;
+  let selectedGame = game ? await validatedSelectedGame(game.id) : null;
   const title = settingsOnly ? "Play Settings" : selectedGame.title;
-  const args = settingsOnly ? [] : commandArguments(selectedGame.filePath, state.preferences.fullscreen);
   const { spawn } = await import("node:child_process");
   const log = await createLogWriter(title);
   try {
@@ -407,10 +460,12 @@ async function launchCore({ game = null, settingsOnly = false } = {}) {
     }
     core = revalidatedCore;
     await assertCoreExecutableIdentity(core);
+    if (selectedGame) selectedGame = await validatedSelectedGame(selectedGame.id);
   } catch (error) {
     log.close();
     throw error;
   }
+  const args = settingsOnly ? [] : commandArguments(selectedGame.filePath, state.preferences.fullscreen);
   const child = spawn(core.path, args, {
     shell: false,
     windowsHide: false,
@@ -482,6 +537,16 @@ function stopOwnedCore() {
   }, 4_000).unref();
 }
 
+async function openBundledDemoDocument(kind) {
+  const filename = bundledDemoDocuments[kind];
+  if (!filename || !bundledDemoFilePath) throw new Error("The bundled demo document is unavailable.");
+  const candidate = path.join(path.dirname(bundledDemoFilePath), filename);
+  await verifyBundledDemoDocument(candidate, filename);
+  const openError = await shell.openPath(candidate);
+  if (openError) throw new Error(`Windows could not open the bundled demo document: ${openError}`);
+  return true;
+}
+
 function registerIPC() {
   ipcMain.handle("state:get", () => rendererState());
 
@@ -491,9 +556,12 @@ function registerIPC() {
       || payload?.privacyAccepted !== true
       || payload?.nonAffiliationAccepted !== true
       || payload?.hashOnlyRiskAccepted !== true
+      || payload?.bundledDemoAccepted !== true
       || !["en", "ja"].includes(payload?.language)
     ) throw new Error("All first-run safety acknowledgements are required.");
     state.preferences.consentAccepted = true;
+    state.preferences.bundledDemoTermsAccepted = true;
+    state.preferences.bundledDemoTermsRevision = BUNDLED_DEMO_TERMS_REVISION;
     state.preferences.language = payload.language;
     await persistAndEmit();
     return rendererState();
@@ -542,8 +610,7 @@ function registerIPC() {
 
   ipcMain.handle("library:remove", async (_event, gameID) => {
     requireConsent();
-    if (typeof gameID !== "string") throw new Error("Invalid game identifier.");
-    state.games = state.games.filter((game) => game.id !== gameID);
+    state = removeGameByID(state, gameID);
     await persistAndEmit();
     return rendererState();
   });
@@ -633,6 +700,12 @@ function registerIPC() {
     await shell.openPath(logDirectory);
     return true;
   });
+  ipcMain.handle("demo:open-license", () => {
+    return openBundledDemoDocument("license");
+  });
+  ipcMain.handle("demo:open-notice", () => {
+    return openBundledDemoDocument("notice");
+  });
 }
 
 async function createWindow() {
@@ -680,7 +753,15 @@ app.whenReady().then(async () => {
   parseOfficialCoreIdentityManifest(manifestValue);
   officialCoreIdentityManifest = manifestValue;
   stateFile = path.join(app.getPath("userData"), "library.json");
-  state = isPreviewCapture ? previewState() : sanitizeState(await loadState(stateFile));
+  if (isPreviewCapture) {
+    state = previewState();
+  } else {
+    const configuredDemoPath = configuredBundledDemoPath();
+    await verifyBundledDemoResourceSet(path.dirname(configuredDemoPath));
+    bundledDemoFilePath = (await verifyBundledDemo(configuredDemoPath)).path;
+    state = reconcileBundledDemo(await loadState(stateFile), bundledDemoFilePath);
+    state = await saveState(stateFile, state);
+  }
   registerIPC();
   await createWindow();
 });

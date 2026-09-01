@@ -14,12 +14,19 @@ final class GameLibrary: ObservableObject {
     @Published var lastError: String?
 
     private let storageURL: URL
+    private let bundledDemoURL: URL?
     private var scanTask: Task<Void, Never>?
     private var scanWorker: Task<GameScanResult, Never>?
 
-    init(storageURL: URL? = nil) {
+    init(
+        storageURL: URL? = nil,
+        bundledDemoURL: URL? = BundledHomebrewDemo.bundleURL()
+    ) {
         self.storageURL = storageURL ?? Self.defaultStorageURL()
+        self.bundledDemoURL = bundledDemoURL
+        let isFirstLibrary = !FileManager.default.fileExists(atPath: self.storageURL.path)
         load()
+        reconcileBundledDemo(isFirstLibrary: isFirstLibrary)
     }
 
     var selectedGame: Game? {
@@ -147,7 +154,11 @@ final class GameLibrary: ObservableObject {
 
     func rename(_ id: UUID, to title: String) {
         let cleaned = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty, let index = games.firstIndex(where: { $0.id == id }) else { return }
+        guard
+            id != BundledHomebrewDemo.id,
+            !cleaned.isEmpty,
+            let index = games.firstIndex(where: { $0.id == id })
+        else { return }
         games[index].title = cleaned
         save()
     }
@@ -234,6 +245,36 @@ final class GameLibrary: ObservableObject {
                 "ライブラリを読み込めませんでした: \(error.localizedDescription)\(suffix)"
             )
         }
+    }
+
+    private func reconcileBundledDemo(isFirstLibrary: Bool) {
+        guard let bundledDemoURL else { return }
+
+        do {
+            try BundledHomebrewDemo.validateFile(at: bundledDemoURL)
+        } catch {
+            lastError = error.localizedDescription
+            return
+        }
+
+        if let index = games.firstIndex(where: { $0.id == BundledHomebrewDemo.id }) {
+            let current = games[index]
+            let refreshed = BundledHomebrewDemo.game(url: bundledDemoURL, preserving: current)
+            guard current != refreshed else { return }
+            games[index] = refreshed
+            if selectedGameID == nil { selectedGameID = refreshed.id }
+            save()
+            return
+        }
+
+        // An existing library without this stable ID means the user either
+        // removed the demo or created the library before it was offered. Never
+        // add it back automatically.
+        guard isFirstLibrary else { return }
+        let demo = BundledHomebrewDemo.game(url: bundledDemoURL)
+        games.append(demo)
+        selectedGameID = demo.id
+        save()
     }
 
     private func save() {

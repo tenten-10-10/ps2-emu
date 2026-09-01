@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "recordState": "template",
+  "product": {
+    "name": "PS2 Emu",
+    "version": "0.1.0"
+  },
+  "source": {
+    "repositoryURL": "https://github.com/tenten-10-10/ps2-emu",
+    "revisionAlgorithm": "git-sha1",
+    "revision": null,
+    "archive": {
+      "name": null,
+      "sizeBytes": null,
+      "sha256": null
+    }
+  },
+  "finalArtifact": {
+    "name": null,
+    "sizeBytes": null,
+    "sha256": null
+  },
+  "sourceBinding": {
+    "artifactReportedRevision": null,
+    "verification": {
+      "result": "not-run",
+      "notes": null
+    },
+    "rawEvidenceSha256": null
+  },
+  "target": {
+    "platformID": "macos-arm64",
+    "operatingSystem": "macOS",
+    "launcherArchitecture": "arm64",
+    "coreArchitecture": "arm64",
+    "compatibilityMode": "native",
+    "minimumOS": "macOS 14.0",
+    "observedOSVersion": null,
+    "observedOSBuild": null,
+    "hardware": {
+      "manufacturer": null,
+      "model": null,
+      "cpuOrSoC": null,
+      "memoryGiB": null,
+      "physicalMachine": null
+    }
+  },
+  "download": {
+    "browserName": null,
+    "browserVersion": null,
+    "url": null,
+    "downloadedAt": null,
+    "downloadedSha256": null,
+    "quarantineOrMarkOfWebPresent": null
+  },
+  "platformSecurity": {
+    "macOS": {
+      "developerIDApplication": null,
+      "teamIdentifier": null,
+      "appCodeSignature": {
+        "result": "not-run",
+        "notes": null
+      },
+      "hardenedRuntime": null,
+      "secureTimestamp": null,
+      "getTaskAllowAbsent": null,
+      "dmgCodeSignature": {
+        "result": "not-run",
+        "notes": null
+      },
+      "notarizationStatus": null,
+      "notarySubmissionID": null,
+      "notaryLogSha256": null,
+      "stapledTicket": {
+        "result": "not-run",
+        "notes": null
+      },
+      "gatekeeper": {
+        "result": "not-run",
+        "notes": null
+      },
+      "securityBypassUsed": null
+    },
+    "windows": null
+  },
+  "externalPlay": {
+    "delivery": "external-official-installation",
+    "expectedVersion": "0.77-7-g04bde0df",
+    "expectedUpstreamCommit": "04bde0df87ee7c0e2f0151b51bb2cc22c88541da",
+    "observedVersion": null,
+    "acquisitionURL": null,
+    "installerSha256": null,
+    "executableSha256": null,
+    "codeDirectoryHash": null,
+    "requiredFileSetEvidenceSha256": null,
+    "identityMode": "strict-developer-id",
+    "identityKey": null,
+    "publisherStatus": null,
+    "publisherVerified": null,
+    "validation": {
+      "result": "not-run",
+      "notes": null
+    },
+    "rawEvidenceSha256": null,
+    "notes": null
+  },
+  "functionalTests": {
+    "fixture": {
+      "name": null,
+      "kind": null,
+      "sha256": null,
+      "sourceURL": null,
+      "legalBasis": null
+    },
+    "externalCoreDiscovery": {
+      "result": "not-run",
+      "notes": null
+    },
+    "launch": {
+      "result": "not-run",
+      "notes": null
+    },
+    "graphics": {
+      "result": "not-run",
+      "notes": null
+    },
+    "audio": {
+      "result": "not-run",
+      "notes": null
+    },
+    "controller": {
+      "result": "not-run",
+      "notes": null
+    },
+    "save": {
+      "result": "not-run",
+      "notes": null
+    },
+    "stop": {
+      "result": "not-run",
+      "notes": null
+    },
+    "relaunch": {
+      "result": "not-run",
+      "notes": null
+    }
+  },
+  "systemTests": {
+    "standardUser": {
+      "result": "not-run",
+      "notes": null
+    },
+    "removal": {
+      "result": "not-run",
+      "notes": null
+    },
+    "wrapperNetworkSilence": {
+      "result": "not-run",
+      "notes": null
+    }
+  },
+  "tester": {
+    "alias": null,
+    "role": null,
+    "startedAt": null,
+    "completedAt": null,
+    "timezone": null,
+    "notes": null
+  },
+  "attestation": {
+    "observedOnNamedHardware": null,
+    "finalArtifactHashMatched": null,
+    "valuesRecordedWithoutFabrication": null
+  },
+  "attachments": [],
+  "failures": []
+}

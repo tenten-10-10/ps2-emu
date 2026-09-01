@@ -4,6 +4,10 @@ PS2 Emu は、ゲームを整理して起動するためのmacOS / Windows向け
 
 > **公開状態:** 正式名称は **PS2 Emu**、wrapperは `Copyright (c) 2026 ten:ten` のMIT Licenseです。4種類とも未署名のローカル候補で、バイナリはまだ全世界公開できません。固定したmacOS Play! `0.77-7-g04bde0df`には認証不要の公式CI公開取得経路を確認済みですが、macOS Developer ID / 公証、Windows Authenticode / SmartScreen、全4対象の実機・clean-machine試験が残っています。詳細は [ADR-0002](docs/ADR-0002-public-core-distribution.md)、[ADR-0003](docs/ADR-0003-four-platform-distribution.md)、[公開チェックリスト](docs/PUBLIC_RELEASE_CHECKLIST.md) を参照してください。
 
+英語を既定にした8言語の恒久ティザーは
+[https://tenten-10-10.github.io/ps2-emu/](https://tenten-10-10.github.io/ps2-emu/)
+で公開しています。ダウンロードとKo-fiは、署名・実機証跡・受取人確認が揃うまで機械的に無効です。
+
 - macOS Apple Silicon: arm64 SwiftUIランチャー + 外部Play! arm64
 - macOS Intel: x86_64 SwiftUIランチャー + 外部Play! x86_64
 - Windows 11 x64: x64 Electronランチャー + 外部Play! x64
@@ -12,7 +16,9 @@ PS2 Emu は、ゲームを整理して起動するためのmacOS / Windows向け
 - 対応入力ファイル: `.iso`、`.mds`、`.isz`、`.cso`、`.cue`、`.chd`、`.elf`
 - 表示方式: ゲーム画面は PS2 Emu の中ではなく、Play! の別ウィンドウで開く
 
-PS2 Emu は BIOS、ゲーム、暗号鍵、ゲームの著作物画像を同梱・取得しません。対応拡張子であることは、個々のゲームが正常に動作することを保証しません。
+PS2 Emu は BIOS、市販ゲーム、権利未確認のhomebrew、暗号鍵、ゲームの著作物画像を同梱・取得しません。唯一の例外として、公式ps2sdk CIが生成したオープンソースの **PS2SDK Cube Demo** を、起動確認用fixtureとして固定ハッシュで同梱します。これは市販ゲームではなく、実行時のネットワーク取得も行いません。対応拡張子であることは、個々のゲームが正常に動作することを保証しません。
+
+Cube Demoはps2sdk commit `39a89923ce59152fa855250cfacaccf8e581a1eb`、Actions run `33232694254`、ELF SHA-256 `1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584`へ固定しています。ソース、AFL 2.0、newlib、GCC runtimeの原文と詳細な来歴は [PS2SDK-CUBE-NOTICE.md](Resources/Fixtures/PS2SDK-CUBE-NOTICE.md) にあります。validatorはこのexact pathとbyteだけを許可し、他のELF・ディスクイメージ・ゲームpayloadを拒否します。初回のライセンス同意と人間による最終法務確認が完了するまで、バイナリ公開ゲートは閉じたままです。
 
 使い方は [ユーザーガイド](docs/USER_GUIDE.md) を参照してください。
 
@@ -177,7 +183,7 @@ Apple Developer契約、証明書、Keychain profile、本人確認を自動作�
 
 自動テストと `verify-app.sh` は実ゲームの起動、映像、音声、コントローラー、メモリーカード、セーブステートの実動作までは検証しません。
 
-公式 ps2sdk の回転キューブELFを使う手動の映像 smoke test も用意しています。これはゲームやSony BIOSを含まず、ELFのSHA-256を確認してから Play! を起動します。`--fetch-only` は取得・検証だけを行い、ウィンドウを開きません。
+同梱する公式ps2sdk Cube Demo ELFを使う手動の映像smoke testも用意しています。これは市販ゲームやSony BIOSを含まず、ELFのSHA-256を確認してからPlay!を起動します。`--fetch-only` は公式CI artifactの取得・検証だけを行い、ウィンドウを開きません。公開ランタイムはネットワーク取得を行わず、同梱したexact byteだけを使用します。
 
 ```sh
 ./scripts/smoke-test-cube.sh --fetch-only
@@ -192,7 +198,7 @@ Apple Developer契約、証明書、Keychain profile、本人確認を自動作�
 Sources/PS2Emulator/       SwiftUI アプリとライブラリ／起動処理
 Tests/PS2EmulatorTests/    自動テスト
 windows/                   Windows x64 / ARM64 Electronランチャー、テスト、packager
-Resources/                 Info.plist、Play! ライセンス、third-party notice
+Resources/                 Info.plist、Play! notice、固定Cube Demo・source・license
 Vendor/Play.app/           固定した公式 Universal Play! コア
 scripts/                   コア取得、ビルド、検証、DMG、アイコン、手動smoke test
 docs/                      ユーザーガイドと設計記録
@@ -226,7 +232,7 @@ site/                      英語優先・8言語・4プラットフォームの
 ## 法的境界
 
 - 自分が適法に作成・利用できるゲームイメージ、または配布・実行許可のある homebrew ELF だけを使用してください。
-- BIOS、ゲーム、暗号鍵、著作権で保護されたゲーム画像を本アプリへ追加配布しないでください。
+- BIOS、市販ゲーム、権利未確認のhomebrew、暗号鍵、著作権で保護されたゲーム画像を本アプリへ追加配布しないでください。唯一許可される実行payloadは、上記の固定SHA-256とライセンス一式を持つPS2SDK Cube Demoです。
 - Play! は BSD 2-Clause ライセンスの独立した第三者プロジェクトです。最初の公開候補は Play! を再配布せず、公式配布元からの別途導入を案内します。同梱版を将来再配布する場合は、Play!だけでなくQt、MoltenVK、データファイルを含む全依存物の許諾・notice・必要な対応ソースを別途解決する必要があります。
 - PS2 Emu は Sony Interactive Entertainment、PlayStation、Play! プロジェクトの承認・提携を示すものではありません。
 

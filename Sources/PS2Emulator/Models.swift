@@ -61,6 +61,7 @@ struct Game: Identifiable, Codable, Hashable, Sendable {
     }
 
     var fileURL: URL { URL(fileURLWithPath: path) }
+    var isBundledHomebrewDemo: Bool { id == BundledHomebrewDemo.id }
     var isAvailable: Bool { FileManager.default.fileExists(atPath: path) }
     var fileExtension: String { fileURL.pathExtension.uppercased() }
 

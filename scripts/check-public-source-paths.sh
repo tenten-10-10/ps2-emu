@@ -17,6 +17,13 @@ if ! printf '%s\n' "$resolved_revision" | /usr/bin/grep -Eq '^[0-9a-f]{40}$'; th
   exit 65
 fi
 
+verified_fixture_revision=$(/bin/sh "$script_dir/verify-bundled-homebrew.sh" "$resolved_revision")
+if ! printf '%s\n' "$verified_fixture_revision" | /usr/bin/grep -F \
+  "Verified exact bundled PS2SDK Cube Demo, source, and license allowlist ($resolved_revision)." >/dev/null; then
+  echo "Bundled-homebrew verification returned an unexpected result." >&2
+  exit 74
+fi
+
 restricted_path_pattern='(^|/)(AGENTS\.md|Vendor|\.build|\.swiftpm|dist|node_modules|artifacts|output|\.playwright-cli|\.vercel)(/|$)|(^|/)(\.DS_Store|\.env($|\.)|\.git-credentials|\.netrc|\.npmrc|id_(rsa|dsa|ecdsa|ed25519)|auth\.json|credentials\.json|secrets?\.json)$|\.(app|dmg|zip|exe|dll|dylib|so|a|lib|asar|node|p8|p12|pfx|key|pem|mobileprovision|provisionprofile)($|/)'
 
 tracked_paths=$(/usr/bin/git -C "$project_root" ls-tree -r --name-only "$resolved_revision")
@@ -24,6 +31,15 @@ restricted_tracked=$(printf '%s\n' "$tracked_paths" | /usr/bin/grep -Ei "$restri
 if [ -n "$restricted_tracked" ]; then
   echo "Release revision tracks prohibited public-source paths:" >&2
   printf '%s\n' "$restricted_tracked" >&2
+  exit 74
+fi
+
+allowed_fixture_path='Resources/Fixtures/ps2sdk-cube.elf'
+tracked_payloads=$(printf '%s\n' "$tracked_paths" | /usr/bin/grep -Ei '\.(iso|mds|isz|cso|cue|chd|elf)$' || true)
+unexpected_tracked_payloads=$(printf '%s\n' "$tracked_payloads" | /usr/bin/grep -Fvx "$allowed_fixture_path" || true)
+if [ -n "$unexpected_tracked_payloads" ]; then
+  echo "Release revision tracks a prohibited game, disc, or homebrew payload:" >&2
+  printf '%s\n' "$unexpected_tracked_payloads" >&2
   exit 74
 fi
 
@@ -50,5 +66,31 @@ if [ -n "$restricted_history" ]; then
   printf '%s\n' "$restricted_history" >&2
   exit 74
 fi
+
+
+history_payloads=$(printf '%s\n' "$history_paths" | /usr/bin/grep -Ei '\.(iso|mds|isz|cso|cue|chd|elf)$' || true)
+unexpected_history_payloads=$(printf '%s\n' "$history_payloads" | /usr/bin/grep -Fvx "$allowed_fixture_path" || true)
+if [ -n "$unexpected_history_payloads" ]; then
+  echo "Git history contains a prohibited game, disc, or homebrew payload path:" >&2
+  printf '%s\n' "$unexpected_history_payloads" >&2
+  exit 74
+fi
+
+expected_fixture_sha='1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584'
+fixture_history_commits=$(/usr/bin/git -C "$project_root" log --all --format='%H' -- "$allowed_fixture_path")
+for fixture_history_commit in $fixture_history_commits; do
+  if ! /usr/bin/git -C "$project_root" cat-file -e \
+    "$fixture_history_commit:$allowed_fixture_path" 2>/dev/null; then
+    continue
+  fi
+  historical_fixture_sha=$(/usr/bin/git -C "$project_root" show \
+    "$fixture_history_commit:$allowed_fixture_path" \
+    | /usr/bin/shasum -a 256 \
+    | /usr/bin/awk '{print $1}')
+  if [ "$historical_fixture_sha" != "$expected_fixture_sha" ]; then
+    echo "Git history contains a non-approved byte version of $allowed_fixture_path." >&2
+    exit 74
+  fi
+done
 
 echo "$resolved_revision"

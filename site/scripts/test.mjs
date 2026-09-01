@@ -27,6 +27,7 @@ const requiredKeys = [
   "metaTitle", "metaDescription", "heroLead", "heroBody", "proofTitle",
   "provenanceTitle", "legalCallout", "supportTitle", "supportBody", "supportFine",
   "sourceLink",
+  "demoTitle", "demoBody", "demoSourceLink",
   "platformsEyebrow", "platformsTitle", "platformsBody", "nativeMode",
   "windowsArmMode", "candidateStatus", "downloadLocked", "downloadReady",
   "windowsVisualAlt", "windowsVisualCaption", "downloadsGateNote",
@@ -191,6 +192,8 @@ for (const localeKey of localeOrder) {
       check(structuredData.isAccessibleForFree === true, `${route} must describe the app as free`);
       check(structuredData.codeRepository === config.sourceRepositoryUrl, `${route} software JSON-LD source repository drift`);
       check(html.includes(`href="${config.sourceRepositoryUrl}"`), `${route} lacks the public source repository link`);
+      check(html.includes("39a89923ce59152fa855250cfacaccf8e581a1eb/ee/draw/samples/cube"), `${route} lacks the exact bundled demo source link`);
+      check(html.includes(locale.demoBody.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;")), `${route} lacks the localized bundled demo disclosure`);
       check(html.includes('<h1 id="hero-title" class="hero-title hero-stage hero-stage--2"><span>PS2</span><span>Emu</span></h1>'), `${route} hero must keep the official name at the top of the hierarchy`);
       check(html.includes("Ko-fi"), `${route} home page must identify the sole support service`);
       for (const target of ["macArm64", "macX64", "windowsX64", "windowsArm64"]) {
@@ -220,6 +223,10 @@ check(homeHtml.includes("does not buy features"), "English disclosure must separ
 check(!/bundled Play!|source ships with/i.test(homeHtml), "teaser must not promise a bundled engine or shipped source");
 check(homeHtml.includes("wrapper source is available under the MIT License"), "teaser must describe the public MIT source accurately");
 check(homeHtml.includes("MIT License"), "teaser must identify the selected public source license");
+check(homeHtml.includes("PS2SDK Cube Demo"), "teaser must identify the bundled homebrew demo");
+check(homeHtml.includes("AFL 2.0"), "teaser must identify the bundled demo license");
+check(homeHtml.includes("not a commercial PS2 game"), "teaser must distinguish homebrew from commercial games");
+check(!homeHtml.includes("Each package contains only the launcher"), "teaser must not hide the authorized bundled demo");
 check(!homeHtml.includes("Coming soon to Apple silicon."), "English teaser still claims an Apple-silicon-only release");
 check(homeHtml.includes("Windows launcher interface · rendered development preview · Windows runtime test pending"), "Windows preview must disclose that runtime testing is pending");
 check((homeHtml.match(/data-download-target=/g) || []).length === 4, "English teaser must render four download targets");

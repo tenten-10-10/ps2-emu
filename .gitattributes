@@ -1,4 +1,6 @@
 AGENTS.md export-ignore
+# These reviewed third-party fixture bytes are SHA-256 pinned on every OS.
+Resources/Fixtures/** -text
 .build/** export-ignore
 .swiftpm/** export-ignore
 dist/** export-ignore

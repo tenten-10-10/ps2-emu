@@ -48,7 +48,7 @@ struct SettingsView: View {
                     isOn: $preferences.showFileDetails
                 )
             }
-            .disabled(!preferences.hasAcceptedSafetyNotice)
+            .disabled(!preferences.hasAcceptedRequiredNotices)
 
             Section(preferences.text("Library", "ライブラリ")) {
                 LabeledContent(
@@ -66,7 +66,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .disabled(!preferences.hasAcceptedSafetyNotice)
+            .disabled(!preferences.hasAcceptedRequiredNotices)
         }
         .padding(24)
     }
@@ -133,7 +133,7 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(
-                        !preferences.hasAcceptedSafetyNotice
+                        !preferences.hasAcceptedRequiredNotices
                             || launcher.isRunning
                             || !launcher.isCoreAvailable
                     )
@@ -148,8 +148,8 @@ struct SettingsView: View {
 
             Section(preferences.text("Implementation", "実装情報")) {
                 Text(preferences.text(
-                    "Play! is an open-source PS2 emulator available under the BSD 2-Clause license. Games, BIOS files, and console keys are not included.",
-                    "Play!はBSD 2-Clauseライセンスで公開されるオープンソースPS2エミュレーターです。ゲーム、BIOS、コンソールキーは同梱されません。"
+                    "Play! is an open-source PS2 emulator available under the BSD 2-Clause license. No commercial games, BIOS files, or console keys are included; the library starts with the separately attributed open-source PS2SDK Cube Demo.",
+                    "Play!はBSD 2-Clauseライセンスで公開されるオープンソースPS2エミュレーターです。市販ゲーム、BIOS、コンソールキーは同梱されず、ライブラリには別途帰属表示されたオープンソースのPS2SDK Cube Demoだけが最初から表示されます。"
                 ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -206,6 +206,7 @@ struct SettingsView: View {
 
                 Button(preferences.text("Show First-Run Notice Again", "初回案内をもう一度表示")) {
                     preferences.hasAcceptedSafetyNotice = false
+                    preferences.hasAcceptedBundledDemoLicense = false
                 }
 
                 Spacer(minLength: 8)

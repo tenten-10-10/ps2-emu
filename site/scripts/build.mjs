@@ -225,12 +225,13 @@ ${header(localeKey, "home")}
       ${proofItem("01", t.libraryTitle, t.libraryBody)}
       ${proofItem("02", t.formatsTitle, t.formatsBody)}
       ${proofItem("03", t.biosTitle, t.biosBody)}
+      ${proofItem("04", t.demoTitle, t.demoBody)}
     </ol>
     <dl class="spec-line" data-reveal><div><dt>${escapeHtml(t.platformLabel)}</dt><dd>${escapeHtml(t.platformValue)}</dd></div><div><dt>${escapeHtml(t.formatsLabel)}</dt><dd>${escapeHtml(t.formatsValue)}</dd></div><div><dt>${escapeHtml(t.coreLabel)}</dt><dd>${escapeHtml(t.coreValue)}</dd></div></dl>
   </section>
 
   <section class="open-section section" id="open" aria-labelledby="open-title">
-    <div class="open-sticky" data-reveal><p class="eyebrow">${escapeHtml(t.provenanceEyebrow)}</p><h2 id="open-title">${escapeHtml(t.provenanceTitle)}</h2><p>${escapeHtml(t.provenanceBody)}</p><div class="source-links"><a href="${escapeHtml(config.sourceRepositoryUrl)}" rel="noopener noreferrer">${escapeHtml(t.sourceLink)} <span aria-hidden="true">↗</span></a><a href="https://github.com/jpd002/Play-" rel="noopener noreferrer">${escapeHtml(t.provenanceLink)} <span aria-hidden="true">↗</span></a><a href="https://github.com/jpd002/Play-/blob/master/License.txt" rel="noopener noreferrer">${escapeHtml(t.licenseLink)} <span aria-hidden="true">↗</span></a></div></div>
+    <div class="open-sticky" data-reveal><p class="eyebrow">${escapeHtml(t.provenanceEyebrow)}</p><h2 id="open-title">${escapeHtml(t.provenanceTitle)}</h2><p>${escapeHtml(t.provenanceBody)}</p><div class="source-links"><a href="${escapeHtml(config.sourceRepositoryUrl)}" rel="noopener noreferrer">${escapeHtml(t.sourceLink)} <span aria-hidden="true">↗</span></a><a href="https://github.com/ps2dev/ps2sdk/tree/39a89923ce59152fa855250cfacaccf8e581a1eb/ee/draw/samples/cube" rel="noopener noreferrer">${escapeHtml(t.demoSourceLink)} <span aria-hidden="true">↗</span></a><a href="https://github.com/jpd002/Play-" rel="noopener noreferrer">${escapeHtml(t.provenanceLink)} <span aria-hidden="true">↗</span></a><a href="https://github.com/jpd002/Play-/blob/master/License.txt" rel="noopener noreferrer">${escapeHtml(t.licenseLink)} <span aria-hidden="true">↗</span></a></div></div>
     <div class="open-details">
       <article data-reveal><span>01</span><h3>${escapeHtml(t.provenanceSourceTitle)}</h3><p>${escapeHtml(t.provenanceSourceBody)}</p></article>
       <article data-reveal><span>02</span><h3>${escapeHtml(t.provenanceLicenseTitle)}</h3><p>${escapeHtml(t.provenanceLicenseBody)}</p></article>

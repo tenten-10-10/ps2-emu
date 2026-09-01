@@ -1,7 +1,10 @@
 # PS2 Emu for Windows
 
-This folder contains the Windows x64 and Windows ARM64 launcher. It does not
-contain or download Play!, games, BIOS files, keys, Qt, or compatibility data.
+This folder contains the Windows x64 and Windows ARM64 launcher. It packages
+one exact, unmodified official `ps2dev/ps2sdk` Cube Demo homebrew fixture under
+AFL 2.0 for first-run validation. It does not contain or download Play!,
+commercial games, any other homebrew, BIOS files, keys, Qt, or compatibility
+data.
 
 ## Architecture
 
@@ -93,6 +96,66 @@ Their package roots and executables are named `PS2 Emu-win32-*` and
 `PS2 Emu.exe`. The internal npm package slug remains
 `ps2-emulator-windows`. To preserve existing libraries after the product rename,
 runtime user data remains in the previous `PS2 Emulator` user-data directory.
+The Cube Demo ELF, AFL 2.0 text, provenance notice, newlib license collection,
+and GCC license/runtime-exception texts are copied outside `app.asar` under
+`resources/PS2SDK-Cube-Demo/`. The ELF is accepted only at that exact path with
+SHA-256 `1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584`.
+It is added only to a genuinely new library, keeps the deterministic ID
+`ps2sdk-cube-demo`, refreshes its installation path after an app update, is not
+silently restored after removal, and is re-hashed immediately before launch.
+
+## Owner-authorized signed release lane
+
+The cross-packaging command above remains the unsigned internal lane. It never
+loads a certificate or produces a public filename. After an owner has reviewed
+one exact unsigned ZIP, prepared a code-signing certificate in the Windows
+`CurrentUser\\My` certificate store, and confirmed a trusted RFC3161 timestamp
+service, run the separate release signer on Windows:
+
+```powershell
+powershell.exe -NoLogo -NoProfile -File scripts/sign-windows-release.ps1 `
+  -UnsignedZipPath 'C:\reviewed\PS2-Emu-0.1.0-Windows-x64-UNSIGNED-DO-NOT-DISTRIBUTE.zip' `
+  -ReviewedUnsignedZipSha256 '64-character-reviewed-sha256' `
+  -SourceRevision '40-character-reviewed-public-source-commit' `
+  -CertificateThumbprint '40-character-current-user-certificate-thumbprint' `
+  -TimestampUrl 'https://owner-approved-rfc3161-service.example'
+```
+
+Repeat with the separately reviewed ARM64 ZIP. The script derives and enforces
+the architecture from the unsigned filename and package root. It then:
+
+- verifies the reviewed input SHA-256 before extraction;
+- requires the ZIP filename version and product identity to match the clean
+  public checkout;
+- rejects unsafe ZIP paths, reparse points, extra executables, Play.exe, Qt,
+  commercial games, every other homebrew/ROM, BIOS material, credentials,
+  private keys, and missing package files;
+- verifies the exact `app.asar` allowlist and every packaged application source
+  byte against the clean public checkout selected by `SourceRevision`;
+- checks the exact x64 or ARM64 PE Machine value;
+- requires one unexpired certificate with a private key and Code Signing EKU in
+  `CurrentUser\\My`;
+- signs only `PS2 Emu.exe` with SHA-256 and an RFC3161 timestamp;
+- runs `signtool verify /pa /all /v /tw` and checks the signer and timestamp
+  again with PowerShell;
+- replaces the internal unsigned warning with the signed public README and adds
+  `SOURCE-REVISION.txt`; and
+- writes a distinct public-name candidate ZIP, `.sha256` file, and
+  release-evidence JSON under `windows/dist/signed-candidates/` by default. The
+  README and evidence keep public approval false until the human gates pass.
+
+The script does not import, export, download, or print a certificate private
+key, PFX password, token, or signing-service credential. Run `npm ci` and
+`npm test` in `windows/` first so the pinned ASAR verifier is available.
+Certificate enrollment,
+private-key provisioning, publisher approval, and timestamp-service approval are
+human responsibilities. Existing output files are never overwritten.
+
+This lane does not publish a GitHub Release and does not replace Windows 11 x64
+and ARM64 real-hardware, browser-download, Defender, SmartScreen, Smart App
+Control, standard-user, external Play!, controller, audio, save, stop, and
+relaunch evidence. Only the exact signed ZIP recorded by those tests may later
+be promoted; do not rebuild it after hardware evidence is collected.
 
 ## Public-release boundary
 
@@ -106,4 +169,6 @@ are complete:
 - Windows x64 and Windows 11 ARM64 real-hardware evidence;
 - external Play! launch, controller, audio, save, stop and relaunch tests;
 - clean-machine browser-download/SmartScreen evidence; and
-- final privacy, terms, support and non-affiliation review.
+- final privacy, terms, support and non-affiliation review; and
+- final human review of the Cube Demo AFL 2.0, newlib, and GCC runtime notice
+  obligations, recorded in release evidence.

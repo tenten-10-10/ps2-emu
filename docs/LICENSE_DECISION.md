@@ -21,6 +21,12 @@ Chromium, Sony or PlayStation software, games, artwork, BIOS files, keys, or
 other third-party material. Each independently distributed component keeps its
 own license and provenance requirements.
 
+The bundled `PS2SDK Cube Demo` is therefore not MIT-licensed by `ten:ten`.
+It retains the ps2sdk Academic Free License 2.0 terms and the package also
+reproduces the newlib and GCC runtime notices required by its statically linked
+code. The exact fixture source, build provenance and hashes are recorded in its
+bundled notice.
+
 The formal product-name decision does not itself constitute trademark or legal
 clearance. Non-affiliation wording and an owner/legal review remain publication
 gates for worldwide promotion.

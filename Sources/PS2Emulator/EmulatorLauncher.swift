@@ -222,6 +222,7 @@ final class EmulatorLauncher: ObservableObject {
     ) throws {
         guard !isRunning else { throw EmulatorLaunchError.alreadyRunning }
         guard game.isAvailable else { throw EmulatorLaunchError.gameMissing(game.fileURL) }
+        try BundledHomebrewDemo.validateBeforeLaunch(game)
 
         try startProcess(
             arguments: EmulatorCommand.arguments(for: game, fullscreen: fullscreen),
