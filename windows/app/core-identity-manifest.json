@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "approvalStatus": "ready",
+  "blockReason": null,
+  "approvedReleases": [
+    {
+      "id": "play-0.77-7-g04bde0df-windows-x64-hash-only",
+      "version": "0.77-7-g04bde0df",
+      "upstreamCommit": "04bde0df87ee7c0e2f0151b51bb2cc22c88541da",
+      "verificationPolicy": {
+        "mode": "hash-only",
+        "publisherVerified": false,
+        "userConsentRequired": true,
+        "warning": "Publisher unverified: this unsigned Play! build is approved only by exact SHA-256, size, x64 PE machine, and version-signal matches."
+      },
+      "sourceInstaller": {
+        "url": "https://s3.us-east-2.amazonaws.com/playbuilds/04bde0df/Play-x86-64.exe",
+        "size": 10876483,
+        "sha256": "8792b79b66118eacc99fb318545b766f1451396cb355adb0044a64fb8d6080b3"
+      },
+      "publisher": {
+        "status": "NotSigned",
+        "signerCertificateSha256": null,
+        "subject": null
+      },
+      "versionInfo": {
+        "productName": "Play! - PlayStation2 Emulator",
+        "productVersion": "0.77-7-g04bde0df",
+        "fileVersion": "0.77-7-g04bde0df",
+        "originalFilename": "Play.exe",
+        "registryDisplayVersion": "0.77-7-g04bde0df"
+      },
+      "files": [
+        {
+          "path": "Play.exe",
+          "size": 5047296,
+          "sha256": "eeb14b7a3a407cc45ba2d85052b015a54995abae36251b78172f00de45a769fa",
+          "machine": "x64"
+        },
+        {
+          "path": "Qt5Core.dll",
+          "size": 6023664,
+          "sha256": "8d2ff4ce9096ddccc4f4cd62c2e41fc854cfd1b0d6e8d296645a7f5fd4ae565a",
+          "machine": "x64"
+        },
+        {
+          "path": "Qt5Gui.dll",
+          "size": 7008240,
+          "sha256": "5e7d2d41b8b92a880e83b8cc0ca173f5da61218604186196787ee1600956be1e",
+          "machine": "x64"
+        },
+        {
+          "path": "Qt5Widgets.dll",
+          "size": 5498352,
+          "sha256": "3788c669d4b645e5a576de9fc77fca776bf516d43c89143dc2ca28291ba14358",
+          "machine": "x64"
+        },
+        {
+          "path": "platforms/qwindows.dll",
+          "size": 1477104,
+          "sha256": "3333ba244c97264e3bd19db5953efa80a6e47aaced9d337ac3287ec718162b85",
+          "machine": "x64"
+        },
+        {
+          "path": "styles/qwindowsvistastyle.dll",
+          "size": 144368,
+          "sha256": "d9b21182952682fe7ba63af1df24e23ace592c35b3f31eceef9f0eabeb5881b9",
+          "machine": "x64"
+        },
+        {
+          "path": "imageformats/qjpeg.dll",
+          "size": 421360,
+          "sha256": "fb4e980cb5fafa8a4cd4239329aed93f7c32ed939c94b61fb2df657f3c6ad158",
+          "machine": "x64"
+        }
+      ]
+    }
+  ]
+}

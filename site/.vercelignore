@@ -1,0 +1,10 @@
+# Upload only the source files needed to generate the static site.
+/*
+!.vercelignore
+!package.json
+!package-lock.json
+!public
+!scripts
+!site.config.mjs
+!src
+!vercel.json

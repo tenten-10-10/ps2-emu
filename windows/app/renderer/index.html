@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>PS2 Emu</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to library</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Application">
+      <div class="brand-block">
+        <img class="app-icon" src="assets/app-icon.png" alt="">
+        <div>
+          <strong>PS2 Emu</strong>
+          <span data-platform-label>Windows</span>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Primary">
+        <button class="nav-item is-current" type="button" data-view="library">
+          <span aria-hidden="true">⌂</span><span data-i18n="library">Library</span>
+        </button>
+        <button class="nav-item" type="button" data-open-settings>
+          <span aria-hidden="true">⌁</span><span data-i18n="settings">Settings</span>
+        </button>
+      </nav>
+
+      <div class="core-panel" data-core-panel>
+        <div class="status-line">
+          <span class="status-dot" data-core-dot></span>
+          <span data-core-status>Checking Play!…</span>
+        </div>
+        <p data-core-message></p>
+        <button class="text-button" type="button" data-core-settings data-i18n="openPlaySettings">Open Play! settings</button>
+      </div>
+
+      <div class="sidebar-foot">
+        <p data-i18n="lawfulOnly">Use only lawfully owned game dumps or authorized homebrew.</p>
+        <button class="text-button" type="button" data-show-logs data-i18n="showLogs">Show logs</button>
+      </div>
+    </aside>
+
+    <main id="main-content" class="workspace" tabindex="-1">
+      <header class="workspace-header">
+        <div>
+          <p class="eyebrow" data-i18n="workspace">LOCAL GAME WORKSPACE</p>
+          <h1 data-i18n="yourLibrary">Your library</h1>
+        </div>
+        <div class="header-actions">
+          <label class="search-field">
+            <span class="sr-only" data-i18n="search">Search</span>
+            <span aria-hidden="true">⌕</span>
+            <input type="search" data-search data-i18n-placeholder="searchPlaceholder" placeholder="Search games">
+          </label>
+          <button class="button button--secondary" type="button" data-add-folder data-i18n="addFolder">Add folder</button>
+          <button class="button button--primary" type="button" data-add-files data-i18n="addGames">Add games</button>
+        </div>
+      </header>
+
+      <section class="runtime-strip" aria-live="polite">
+        <div>
+          <span class="runtime-pulse" data-runtime-pulse></span>
+          <strong data-runtime-status>Launcher ready</strong>
+          <span data-runtime-game></span>
+        </div>
+        <button class="button button--danger" type="button" data-stop hidden data-i18n="stop">Stop</button>
+      </section>
+
+      <section class="platform-note" data-arm-note hidden>
+        <span class="platform-note__index">ARM</span>
+        <div>
+          <strong data-i18n="armTitle">Native ARM64 launcher, x64 emulation core</strong>
+          <p data-i18n="armBody">Play! does not currently publish a Windows ARM64 core. Windows 11 runs its x64 process through Prism.</p>
+        </div>
+      </section>
+
+      <section class="library-section" aria-labelledby="library-heading">
+        <div class="section-heading">
+          <h2 id="library-heading" data-i18n="games">Games</h2>
+          <span data-library-count>0 titles</span>
+        </div>
+        <div class="game-grid" data-game-grid></div>
+        <div class="empty-state" data-empty-state>
+          <div class="empty-orbit" aria-hidden="true"><span></span></div>
+          <p class="eyebrow" data-i18n="emptyEyebrow">NOTHING IMPORTED</p>
+          <h2 data-i18n="emptyTitle">Bring your own library.</h2>
+          <p data-i18n="emptyBody">Files remain where they are. The launcher stores only their local paths and play history.</p>
+          <button class="button button--primary" type="button" data-empty-add data-i18n="chooseGames">Choose games</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="settings-dialog" data-settings-dialog aria-labelledby="settings-title">
+    <form method="dialog">
+      <header>
+        <div>
+          <p class="eyebrow" data-i18n="preferences">PREFERENCES</p>
+          <h2 id="settings-title" data-i18n="settings">Settings</h2>
+        </div>
+        <button class="icon-button" value="close" aria-label="Close">×</button>
+      </header>
+
+      <section class="settings-group">
+        <h3 data-i18n="language">Language</h3>
+        <select data-language>
+          <option value="system" data-i18n="systemLanguage">System default</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+      </section>
+
+      <section class="settings-group">
+        <h3 data-i18n="launch">Launch</h3>
+        <label class="toggle-row">
+          <span>
+            <strong data-i18n="fullscreen">Start in fullscreen</strong>
+            <small data-i18n="fullscreenHelp">Passes --fullscreen directly to Play!.</small>
+          </span>
+          <input type="checkbox" data-fullscreen>
+        </label>
+      </section>
+
+      <section class="settings-group">
+        <h3 data-i18n="core">Play! core</h3>
+        <p class="settings-copy" data-settings-core></p>
+        <div class="settings-actions">
+          <button class="button button--secondary" type="button" data-download-play data-i18n="getOfficialPlay">Get official Play!</button>
+          <button class="button button--secondary" type="button" data-choose-core data-i18n="chooseCustomCore">Choose custom core</button>
+          <button class="text-button" type="button" data-use-standard data-i18n="useStandardCore">Use standard install</button>
+        </div>
+        <p class="warning-copy warning-copy--hash" data-i18n="standardHashWarning">Standard Play! is unsigned. PS2 Emu allows only one reviewed build whose Play.exe and required Qt files exactly match pinned SHA-256 hashes, sizes, x64 PE machines, and version signals. Publisher unverified.</p>
+        <p class="warning-copy" data-i18n="customWarning">A custom core bypasses publisher/version trust. Consent pins only Play.exe path and hash, not adjacent DLLs or plugins. Select one only if you understand the whole installation.</p>
+      </section>
+
+      <footer>
+        <span data-version></span>
+        <button class="button button--primary" value="close" data-i18n="done">Done</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="notice-dialog" data-notice-dialog aria-labelledby="notice-title">
+    <form method="dialog">
+      <p class="eyebrow">FIRST RUN · SAFETY</p>
+      <h1 id="notice-title" data-i18n="noticeTitle">Before you continue</h1>
+      <p class="notice-lead" data-i18n="noticeLead">PS2 Emu is an independent launcher. Play! opens separately and game compatibility is not guaranteed.</p>
+
+      <div class="notice-points">
+        <label><input type="checkbox" data-notice-lawful><span data-i18n="noticeLawful">I will use only game dumps I may lawfully use or authorized homebrew. No games or BIOS are included.</span></label>
+        <label><input type="checkbox" data-notice-privacy><span data-i18n="noticePrivacy">I understand that local file paths, library history and capped diagnostic logs are stored on this PC.</span></label>
+        <label><input type="checkbox" data-notice-affiliation><span data-i18n="noticeAffiliation">I understand this project is not affiliated with or endorsed by Sony, PlayStation or Play!.</span></label>
+        <label><input type="checkbox" data-notice-hash-only><span data-i18n="noticeHashOnly">I understand that standard Windows Play! is unsigned and accepted only by exact hashes; its publisher is unverified.</span></label>
+      </div>
+
+      <div class="notice-language">
+        <span data-i18n="language">Language</span>
+        <select data-notice-language>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+      <button class="button button--primary notice-continue" type="button" data-notice-continue disabled data-i18n="continue">Continue</button>
+    </form>
+  </dialog>
+
+  <div class="toast" role="status" aria-live="polite" data-toast hidden></div>
+  <script src="renderer.js" defer></script>
+</body>
+</html>

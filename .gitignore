@@ -1,0 +1,50 @@
+# Internal workspace instructions are never part of the public source archive.
+/AGENTS.md
+
+# Toolchains and dependency caches.
+/.build/
+/.swiftpm/
+/windows/.build/
+**/node_modules/
+
+# Generated applications, packages, and deploy state.
+/dist/
+/site/dist/
+/site/.vercel/
+/site/.playwright-cli/
+/site/output/
+/windows/dist/
+*.dmg
+*.zip
+*.previous-*
+
+# Local-only runtime and verification artifacts.
+/artifacts/screenshots/*.png
+/artifacts/smoke/
+/site/artifacts/
+/windows/artifacts/
+/Vendor/
+
+# Secrets and signing material must never enter source control.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+.git-credentials
+.netrc
+.npmrc
+id_dsa
+id_ecdsa
+id_ed25519
+id_rsa
+auth.json
+credentials.json
+secret.json
+secrets.json
+.DS_Store

@@ -1,0 +1,22 @@
+{
+  "name": "ps2-emulator-windows-build",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "capture": "electron app --capture-preview=artifacts/windows-preview.png",
+    "package:windows": "node scripts/package-windows.mjs",
+    "verify:windows": "node scripts/verify-windows-packages.mjs",
+    "inspect:play-core": "node scripts/inspect-play-core.mjs",
+    "verify:play-core": "node scripts/verify-play-core-identity.mjs"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.1.0",
+    "png-to-ico": "3.0.1"
+  }
+}

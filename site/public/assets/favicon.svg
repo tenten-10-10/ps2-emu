@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="PS2 Emu">
+  <defs>
+    <linearGradient id="g" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8b7cff"/>
+      <stop offset="1" stop-color="#54d7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="#080916"/>
+  <path d="M17 16h19c8.5 0 14 4.7 14 12.2 0 7.7-5.5 12.5-14 12.5H27V50H17V16Zm10 8v8.8h8.2c3.2 0 4.8-1.4 4.8-4.4 0-3-1.6-4.4-4.8-4.4H27Z" fill="url(#g)"/>
+</svg>

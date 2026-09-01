@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "PS2 Emu",
+    "version": "0.1.0",
+    "build": "1",
+    "bundleIdentifier": "jp.planter.ps2emulator",
+    "license": "MIT",
+    "copyrightHolder": "ten:ten",
+    "copyrightYear": 2026
+  },
+  "sourceRevision": null,
+  "distributionMode": "external-core",
+  "publicReleaseApproved": false,
+  "gates": {
+    "downloadsEnabled": false,
+    "paymentsEnabled": false,
+    "wrapperLicenseSelected": true,
+    "macOSDeveloperIdAndNotarizationComplete": false,
+    "windowsStandardCorePolicyApproved": true,
+    "windowsStandardCoreRuntimeIntegrationComplete": true,
+    "windowsAuthenticodeComplete": false,
+    "cleanMachineEvidenceComplete": false,
+    "realHardwareEvidenceComplete": false
+  },
+  "platforms": [
+    {
+      "id": "macos-arm64",
+      "operatingSystem": "macOS",
+      "minimumOS": "14.0",
+      "launcherArchitecture": "arm64",
+      "coreArchitecture": "arm64",
+      "coreDelivery": "external-official-installation",
+      "compatibilityMode": "native",
+      "candidateArtifactName": "PS2-Emu-0.1.0-macOS-arm64-UNSIGNED-DO-NOT-DISTRIBUTE.dmg",
+      "publicArtifactName": null,
+      "sha256": null,
+      "publisher": null,
+      "state": "blocked"
+    },
+    {
+      "id": "macos-x86_64",
+      "operatingSystem": "macOS",
+      "minimumOS": "14.0",
+      "launcherArchitecture": "x86_64",
+      "coreArchitecture": "x86_64",
+      "coreDelivery": "external-official-installation",
+      "compatibilityMode": "native",
+      "candidateArtifactName": "PS2-Emu-0.1.0-macOS-x86_64-UNSIGNED-DO-NOT-DISTRIBUTE.dmg",
+      "publicArtifactName": null,
+      "sha256": null,
+      "publisher": null,
+      "state": "blocked"
+    },
+    {
+      "id": "windows-x64",
+      "operatingSystem": "Windows",
+      "minimumOS": "Windows 11 x64",
+      "launcherArchitecture": "x64",
+      "coreArchitecture": "x64",
+      "coreDelivery": "external-official-installation",
+      "compatibilityMode": "native",
+      "candidateArtifactName": "PS2-Emu-0.1.0-Windows-x64-UNSIGNED-DO-NOT-DISTRIBUTE.zip",
+      "publicArtifactName": null,
+      "sha256": null,
+      "publisher": null,
+      "state": "blocked"
+    },
+    {
+      "id": "windows-arm64",
+      "operatingSystem": "Windows",
+      "minimumOS": "Windows 11 Arm",
+      "launcherArchitecture": "arm64",
+      "coreArchitecture": "x64",
+      "coreDelivery": "external-official-installation",
+      "compatibilityMode": "windows-x64-emulation",
+      "candidateArtifactName": "PS2-Emu-0.1.0-Windows-ARM64-UNSIGNED-DO-NOT-DISTRIBUTE.zip",
+      "publicArtifactName": null,
+      "sha256": null,
+      "publisher": null,
+      "state": "blocked"
+    }
+  ]
+}

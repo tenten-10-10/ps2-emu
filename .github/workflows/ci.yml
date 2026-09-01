@@ -1,0 +1,143 @@
+name: Public source CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 24.18.0
+
+jobs:
+  source-boundary:
+    name: Source boundary and Swift tests
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Check out the complete clean history
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the owner-selected wrapper license
+        run: test -f LICENSE
+      - name: Verify the public source boundary
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run: ./scripts/verify-release-source.sh
+      - name: Test the Swift launcher
+        run: swift test
+      - name: Verify four-platform release metadata
+        run: node scripts/verify-release-manifest.mjs
+
+  macos-launcher:
+    name: macOS ${{ matrix.arch }} external-core launcher
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - name: Check out source without credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Build the unbundled launcher
+        env:
+          PS2_BUNDLE_PLAY: 0
+          PS2_TARGET_ARCH: ${{ matrix.arch }}
+          PS2_ALLOW_GITHUB_HOSTED_TOOLCHAIN: 1
+        run: ./scripts/build-app.sh "$RUNNER_TEMP/ps2-emulator-${{ matrix.arch }}"
+      - name: Verify architecture and unbundled contents
+        env:
+          PS2_BUNDLE_PLAY: 0
+          PS2_TARGET_ARCH: ${{ matrix.arch }}
+        run: ./scripts/verify-app.sh "$RUNNER_TEMP/ps2-emulator-${{ matrix.arch }}/PS2 Emu.app"
+
+  windows-launcher:
+    name: Windows launcher tests on ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - windows-2025
+          - windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - name: Check out source without credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Set up the pinned Node.js toolchain
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run Windows launcher tests
+        run: npm test
+
+  windows-packaging:
+    name: Cross-package and verify Windows launchers
+    runs-on: macos-15
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - name: Check out source without credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Set up the pinned Node.js toolchain
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Cross-package both unsigned launcher architectures
+        run: npm run package:windows
+      - name: Verify both unsigned packages
+        run: npm run verify:windows
+
+  teaser:
+    name: Multilingual teaser safety checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - name: Check out source without credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Set up the pinned Node.js toolchain
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Install the locked zero-dependency site package
+        run: npm ci
+      - name: Build and test all routes and publication gates
+        run: npm test

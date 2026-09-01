@@ -1,0 +1,19 @@
+# Exact top-level files and directories allowed in a public source archive.
+# Keep this list intentionally small. Generated and local-only descendants are
+# rejected separately even when their parent directory appears here.
+.gitattributes
+.github
+.gitignore
+LICENSE
+Package.swift
+PRIVACY.md
+README.md
+SECURITY.md
+Resources
+release
+Sources
+Tests
+docs
+scripts
+site
+windows

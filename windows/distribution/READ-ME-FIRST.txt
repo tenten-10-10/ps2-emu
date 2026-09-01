@@ -1,0 +1,44 @@
+PS2 Emu 0.1.0 for Windows
+UNSIGNED CROSS-PACKAGED CANDIDATE - DO NOT DISTRIBUTE
+
+This ZIP is an internal verification artifact, not a public release.
+
+- It was cross-packaged on macOS and has not been executed or tested on Windows.
+- It has no Authenticode signature. Do not publish it, share it with end users,
+  or bypass Microsoft Defender, SmartScreen, or Smart App Control warnings.
+- It does not include Play.exe, Play!, Qt, states.db, a PlayStation 2 BIOS,
+  games, homebrew images, encryption keys, or signing credentials.
+- Users must install an appropriate official Play! x64 build separately from
+  https://purei.org/downloads.php. PS2 Emu launches it as an independent
+  process and does not download, copy, patch, re-sign, or update it.
+- The approved standard Play! `0.77-7-g04bde0df` build is UNSIGNED. PS2 Emu
+  accepts it only when Play.exe and every required Qt file exactly match pinned
+  SHA-256, size, x64 PE-machine, and version evidence. This is HASH-ONLY trust:
+  the publisher is unverified, and the launcher requires explicit consent for
+  the exact approved identity before first launch and after identity changes.
+- The ARM64 ZIP contains a native ARM64 Electron launcher, not an ARM64-native
+  Play! emulator core. The external Play! x64 process relies on Windows 11 on
+  Arm x64 emulation. Compatibility, performance, power use, JIT behavior, audio,
+  controller support, saves, stopping, and relaunching remain unverified.
+
+Before any public release, retain the included PS2 Emu MIT license, bind the
+package to an exact reviewed source revision, sign it with an owner-approved trusted
+Authenticode identity and timestamp, verify the final ZIP again, and complete
+real-hardware tests on Windows 11 x64 and Windows 11 ARM64. Clean-machine
+browser-download, Defender, SmartScreen, standard-user, and uninstall behavior
+must also be recorded.
+
+日本語
+------
+
+このZIPはmacOS上でクロス生成した内部検証用の未署名成果物です。Windowsでの
+実行確認は行っておらず、一般公開・配布してはいけません。Play.exe、Play!、
+Qt、states.db、PS2 BIOS、ゲーム、homebrewイメージ、暗号鍵、署名鍵は含みません。
+ARM64版もランチャーだけがARM64ネイティブで、外部Play!コアはx64のため
+Windows 11 on Armのx64エミュレーションを使用します。標準Play!
+`0.77-7-g04bde0df`も未署名です。PS2 EmuはPlay.exeと必要なQtファイルの
+SHA-256、サイズ、x64 PE machine、バージョン情報が固定値と完全一致した場合
+だけhash-onlyで許可します。これは発行元の検証ではなく、初回またはidentity
+変更時に明示同意を要求します。同梱MITライセンスの維持、正式なコード署名、
+Windows x64/ARM64実機試験、SmartScreen等の確認が完了する
+までは公開できません。
