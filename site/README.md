@@ -4,15 +4,16 @@ A dependency-free, multilingual static teaser for the four PS2 Emu launcher targ
 
 ## Routes and languages
 
-English is served at `/`. Localized routes are generated for:
+The permanent GitHub Pages site is served below `/ps2-emu/`. English is at
+`/ps2-emu/`; localized routes are generated for:
 
-- Japanese: `/ja/`
-- Spanish: `/es/`
-- French: `/fr/`
-- German: `/de/`
-- Brazilian Portuguese: `/pt-BR/`
-- Korean: `/ko/`
-- Simplified Chinese: `/zh-CN/`
+- Japanese: `/ps2-emu/ja/`
+- Spanish: `/ps2-emu/es/`
+- French: `/ps2-emu/fr/`
+- German: `/ps2-emu/de/`
+- Brazilian Portuguese: `/ps2-emu/pt-BR/`
+- Korean: `/ps2-emu/ko/`
+- Simplified Chinese: `/ps2-emu/zh-CN/`
 
 Each locale also has `/privacy/`, `/terms/`, `/support/`, `/refund-policy/` and `/commercial-disclosure/` beneath its locale prefix. English legal routes live at the root. Every generated page has a matching `lang`, Open Graph metadata and a Twitter summary card. With a real production origin, the build also emits canonical, all locale `hreflang` entries, `x-default` and a sitemap.
 
@@ -22,14 +23,24 @@ Requires Node.js 24 and Python 3 only for the convenience preview server. No npm
 
 ```sh
 cd '/path/to/ps2-emulator/site'
-npm run build
 npm test
 npm run preview
 ```
 
-Then open `http://localhost:4173/`. The deployable directory is `dist/`. Stop the preview server with `Ctrl-C` when finished.
+`npm test` first builds and verifies the host-root `noindex` preview, then builds
+and verifies the permanent GitHub Pages form. The final `dist/` is therefore the
+production Pages artifact. Use `npm run test:preview` or
+`npm run test:production` when only one form is needed. After `npm run preview`,
+open `http://localhost:4173/`; the local server maps the Pages artifact at its
+filesystem root, so direct navigation is only a build inspection convenience.
+Stop the preview server with `Ctrl-C` when finished.
 
-Before a real deployment, replace `https://ps2-emu.example` in `site.config.mjs` with the final HTTPS origin and rebuild. A `.example` build deliberately emits `noindex,nofollow`, a blocking `robots.txt`, no sitemap, no canonical and no placeholder `hreflang` URLs. This makes a temporary preview non-crawlable and prevents it from pretending to be production-ready.
+The checked-in production address is
+`https://tenten-10-10.github.io/ps2-emu/`. Preview builds override the origin
+with `https://ps2-emu.example` and clear the base path. A `.example` build
+deliberately emits `noindex,nofollow`, a blocking `robots.txt`, no sitemap, no
+canonical and no placeholder `hreflang` URLs. This prevents a temporary preview
+from pretending to be production-ready.
 
 ## Four-platform download gate
 
@@ -90,13 +101,36 @@ The hosted Ko-fi page opens by top-level navigation after its allowlisted URL pa
 
 ## Static deployment
 
-Deploy only the contents of `dist/` to a static host. The checked-in `vercel.json` pins Vercel to the reviewed build command and `dist/` output, preserves directory-style routes, and applies the production HTTP security headers described above. `.vercelignore` is an explicit upload allowlist: Vercel receives only the static-site build inputs, not local captures, test output, generated `dist/`, or Playwright work files. Example settings for other hosts:
+`.github/workflows/pages.yml` is the permanent free-hosting path. It runs both
+site modes, uploads only the final production `dist/`, and deploys through the
+GitHub Pages environment. Every GitHub Action is pinned to a full commit SHA.
+The project URL requires the checked-in `/ps2-emu` base path.
 
-- build command: `npm run build && npm test`
+GitHub Pages does not allow this project repository to set arbitrary HTTP
+security headers or the host-root `/robots.txt`. The pages therefore retain the
+restrictive CSP/referrer meta policy, expose canonical/hreflang links and link
+their project sitemap explicitly. There is no form, account, embedded payment,
+analytics, sensitive user data, or enabled download on this teaser. A future
+custom-domain/Vercel production deployment can add the stronger HTTP header
+layer after owner login and domain review.
+
+The checked-in `vercel.json` is preview-only. It runs
+`npm run test:preview`, publishes only `dist/`, preserves directory-style routes,
+and applies the HTTP security headers described above. `.vercelignore` is an
+explicit upload allowlist: Vercel receives only the static-site build inputs,
+not local captures, test output, generated `dist/`, or Playwright work files.
+Example settings for another root-origin production host:
+
+- build command: `npm run test:production`
 - output directory: `dist`
 - Node.js: 24.x
 - redirects/rewrites: none required; preserve directory-style `index.html` routes
 
-For a production Vercel deployment, replace the placeholder origin and pass `npm test` first. Use a preview deployment before promotion, and do not promote it until the final domain, legal copy, download gates and tip gates have been reviewed. A temporary anonymous preview intentionally keeps the placeholder origin, so it remains `noindex` and cannot be treated as production.
+For a future production Vercel deployment, set `PS2_SITE_URL` and
+`PS2_SITE_BASE_PATH` to the reviewed root-origin values and change the Vercel
+build command only in the same reviewed release. Use a preview before promotion.
+A temporary anonymous Vercel deployment intentionally stays `noindex` and cannot
+be treated as production.
 
-No persistent production deployment, DNS change, payment activation or analytics setup has been performed by this project.
+No custom domain, DNS change, payment activation or analytics setup is performed
+by this project.

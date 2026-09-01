@@ -218,15 +218,15 @@ final class CoreTests: XCTestCase {
             VStack(alignment: .leading, spacing: 24) {
                 HStack {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("すべてのゲーム")
+                        Text("All games")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                        Text("\(library.games.count)本 • BIOS不要")
+                        Text("\(library.games.count) titles • No BIOS required")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.55))
                     }
                     Spacer()
-                    EngineStatusPill(isRunning: false, text: "Play! 0.77 • コア待機中")
+                    EngineStatusPill(isRunning: false, text: "Play! 0.77 • Core idle")
                         .foregroundStyle(.white)
                 }
 

@@ -7,6 +7,13 @@ const root = resolve(import.meta.dirname, "..");
 const output = join(root, "dist");
 const siteOrigin = new URL(config.siteUrl);
 const isPreviewOrigin = siteOrigin.hostname === "example" || siteOrigin.hostname.endsWith(".example");
+const basePath = config.basePath === "/" ? "" : String(config.basePath ?? "").replace(/\/$/, "");
+if (basePath && !/^\/[A-Za-z0-9._~-]+(?:\/[A-Za-z0-9._~-]+)*$/.test(basePath)) {
+  throw new Error(`Invalid site basePath: ${config.basePath}`);
+}
+if (!isPreviewOrigin && new URL(config.siteUrl).pathname.replace(/\/$/, "") !== basePath) {
+  throw new Error("Production siteUrl pathname must match basePath.");
+}
 const pages = ["home", "privacy", "terms", "support", "refund", "commerce"];
 const pageSlugs = Object.freeze({
   home: "",
@@ -32,23 +39,31 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function routeFor(localeKey, page = "home") {
+function relativeRouteFor(localeKey, page = "home") {
   const locale = locales[localeKey];
   const segments = [locale.path, pageSlugs[page]].filter(Boolean);
   return `/${segments.join("/")}${segments.length ? "/" : ""}`;
 }
 
+function routeFor(localeKey, page = "home") {
+  return `${basePath}${relativeRouteFor(localeKey, page)}`;
+}
+
+function assetPath(relativePath) {
+  return `${basePath}/${relativePath.replace(/^\/+/, "")}`;
+}
+
 function outputFor(localeKey, page) {
-  const route = routeFor(localeKey, page);
+  const route = relativeRouteFor(localeKey, page);
   return route === "/" ? join(output, "index.html") : join(output, route.slice(1), "index.html");
 }
 
 function alternates(page) {
   const links = localeOrder.map((key) => {
     const locale = locales[key];
-    return `<link rel="alternate" hreflang="${escapeHtml(locale.htmlLang)}" href="${config.siteUrl}${routeFor(key, page)}">`;
+    return `<link rel="alternate" hreflang="${escapeHtml(locale.htmlLang)}" href="${config.siteUrl}${relativeRouteFor(key, page)}">`;
   });
-  links.push(`<link rel="alternate" hreflang="x-default" href="${config.siteUrl}${routeFor("en", page)}">`);
+  links.push(`<link rel="alternate" hreflang="x-default" href="${config.siteUrl}${relativeRouteFor("en", page)}">`);
   return links.join("\n    ");
 }
 
@@ -67,10 +82,10 @@ function languageMenu(currentKey, page) {
 
 function head(localeKey, page, title, description) {
   const locale = locales[localeKey];
-  const canonical = `${config.siteUrl}${routeFor(localeKey, page)}`;
-  const discoveryLinks = isPreviewOrigin ? "" : `<link rel="canonical" href="${canonical}">\n  ${alternates(page)}`;
+  const canonical = `${config.siteUrl}${relativeRouteFor(localeKey, page)}`;
+  const discoveryLinks = isPreviewOrigin ? "" : `<link rel="canonical" href="${canonical}">\n  ${alternates(page)}\n  <link rel="sitemap" type="application/xml" href="${config.siteUrl}/sitemap.xml">`;
   const robots = isPreviewOrigin ? "noindex,nofollow,noarchive" : "index,follow,max-image-preview:large";
-  const socialImage = isPreviewOrigin ? "/assets/og-preview.png" : `${config.siteUrl}/assets/og-preview.png`;
+  const socialImage = isPreviewOrigin ? assetPath("assets/og-preview.png") : `${config.siteUrl}/assets/og-preview.png`;
   const socialURL = isPreviewOrigin ? "" : `<meta property="og:url" content="${canonical}">`;
   const structuredData = {
     "@context": "https://schema.org",
@@ -105,8 +120,8 @@ function head(localeKey, page, title, description) {
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>${escapeHtml(title)}</title>
   ${discoveryLinks}
-  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="icon" href="${assetPath("assets/favicon.svg")}" type="image/svg+xml">
+  <link rel="stylesheet" href="${assetPath("assets/styles.css")}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="${escapeHtml(config.productName)}">
   <meta property="og:title" content="${escapeHtml(title)}">
@@ -122,9 +137,9 @@ function head(localeKey, page, title, description) {
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${socialImage}">
   <script type="application/ld+json">${serializedStructuredData}</script>
-  <script src="/download-config.js" defer></script>
-  <script src="/support-config.js" defer></script>
-  <script src="/assets/main.js" defer></script>
+  <script src="${assetPath("download-config.js")}" defer></script>
+  <script src="${assetPath("support-config.js")}" defer></script>
+  <script src="${assetPath("assets/main.js")}" defer></script>
 </head>`;
 }
 
@@ -185,7 +200,7 @@ ${header(localeKey, "home")}
     </div>
     <figure class="hero-visual hero-stage hero-stage--visual" data-depth>
       <div class="screen-halo" aria-hidden="true"></div>
-      <img src="/assets/ps2-emu-preview.png" width="940" height="620" alt="${escapeHtml(t.visualAlt)}" fetchpriority="high" decoding="async">
+      <img src="${assetPath("assets/ps2-emu-preview.png")}" width="940" height="620" alt="${escapeHtml(t.visualAlt)}" fetchpriority="high" decoding="async">
       <figcaption>${escapeHtml(t.visualCaption)}</figcaption>
     </figure>
     <p class="hero-disclaimer hero-stage hero-stage--4">${escapeHtml(t.legalCallout)}</p>
@@ -198,7 +213,7 @@ ${header(localeKey, "home")}
     </div>
     <figure class="windows-visual" id="windows-preview" data-reveal>
       <div><span>WINDOWS UI</span><strong>x64 / ARM64 launcher</strong></div>
-      <img src="/assets/windows-preview.png" width="1320" height="808" alt="${escapeHtml(t.windowsVisualAlt)}" loading="lazy" decoding="async">
+      <img src="${assetPath("assets/windows-preview.png")}" width="1320" height="808" alt="${escapeHtml(t.windowsVisualAlt)}" loading="lazy" decoding="async">
       <figcaption>${escapeHtml(t.windowsVisualCaption)}</figcaption>
     </figure>
     <p class="download-gate-note" data-reveal>${escapeHtml(t.downloadsGateNote)}</p>
@@ -292,7 +307,7 @@ async function build() {
   if (isPreviewOrigin) {
     await writeFile(join(output, "robots.txt"), "User-agent: *\nDisallow: /\n", "utf8");
   } else {
-    const sitemap = pages.flatMap((page) => localeOrder.map((localeKey) => `  <url><loc>${config.siteUrl}${routeFor(localeKey, page)}</loc></url>`)).join("\n");
+    const sitemap = pages.flatMap((page) => localeOrder.map((localeKey) => `  <url><loc>${config.siteUrl}${relativeRouteFor(localeKey, page)}</loc></url>`)).join("\n");
     await writeFile(join(output, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemap}\n</urlset>\n`, "utf8");
     await writeFile(join(output, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${config.siteUrl}/sitemap.xml\n`, "utf8");
   }
@@ -300,11 +315,11 @@ async function build() {
   const manifest = {
     name: config.productName,
     short_name: config.productName,
-    start_url: "/",
+    start_url: `${basePath}/`,
     display: "browser",
     background_color: "#070815",
     theme_color: "#070815",
-    icons: [{ src: "/assets/favicon.svg", sizes: "any", type: "image/svg+xml" }],
+    icons: [{ src: assetPath("assets/favicon.svg"), sizes: "any", type: "image/svg+xml" }],
   };
   await writeFile(join(output, "site.webmanifest"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   console.log(`Built ${localeOrder.length * pages.length} routes in ${output}`);

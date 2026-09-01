@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { access, readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import vm from "node:vm";
@@ -13,6 +14,7 @@ const sitePackage = JSON.parse(await readFile(join(root, "package.json"), "utf8"
 const sitePackageLock = JSON.parse(await readFile(join(root, "package-lock.json"), "utf8"));
 const configuredOrigin = new URL(config.siteUrl);
 const isPreviewOrigin = configuredOrigin.hostname === "example" || configuredOrigin.hostname.endsWith(".example");
+const basePath = config.basePath === "/" ? "" : String(config.basePath ?? "").replace(/\/$/, "");
 const pages = {
   home: "",
   privacy: "privacy",
@@ -33,15 +35,22 @@ const requiredKeys = [
   "commerceTitle", "commerceSections",
 ];
 
-function routeFor(localeKey, page) {
+function relativeRouteFor(localeKey, page) {
   const segments = [locales[localeKey].path, pages[page]].filter(Boolean);
   return `/${segments.join("/")}${segments.length ? "/" : ""}`;
 }
 
+function routeFor(localeKey, page) {
+  return `${basePath}${relativeRouteFor(localeKey, page)}`;
+}
+
 function pathForRoute(route) {
-  if (route === "/") return join(dist, "index.html");
-  if (route.endsWith("/")) return join(dist, route.slice(1), "index.html");
-  return join(dist, route.slice(1));
+  const localRoute = basePath && (route === basePath || route.startsWith(`${basePath}/`))
+    ? route.slice(basePath.length) || "/"
+    : route;
+  if (localRoute === "/") return join(dist, "index.html");
+  if (localRoute.endsWith("/")) return join(dist, localRoute.slice(1), "index.html");
+  return join(dist, localRoute.slice(1));
 }
 
 function kofiUrlIsAllowed(candidate) {
@@ -63,6 +72,14 @@ check(sitePackageLock.packages?.[""]?.engines?.node === sitePackage.engines.node
 check(config.productName === "PS2 Emu", "official product name drift");
 check(config.copyrightHolder === "ten:ten", "copyright holder drift");
 check(config.sourceRepositoryUrl === "https://github.com/tenten-10-10/ps2-emu", "public source repository drift");
+check(basePath === "" || /^\/[A-Za-z0-9._~-]+(?:\/[A-Za-z0-9._~-]+)*$/.test(basePath), "site basePath is unsafe");
+if (isPreviewOrigin) {
+  check(basePath === "", "preview builds must run at the host root");
+} else {
+  check(config.siteUrl === "https://tenten-10-10.github.io/ps2-emu", "production GitHub Pages URL drift");
+  check(basePath === "/ps2-emu", "production GitHub Pages basePath drift");
+  check(configuredOrigin.pathname.replace(/\/$/, "") === basePath, "production siteUrl pathname must match basePath");
+}
 check(kofiUrlIsAllowed("https://ko-fi.com/tenten"), "valid Ko-fi profile rejected");
 for (const unsafeUrl of [
   "http://ko-fi.com/tenten",
@@ -74,7 +91,7 @@ for (const unsafeUrl of [
 ]) {
   check(!kofiUrlIsAllowed(unsafeUrl), `unsafe Ko-fi URL accepted: ${unsafeUrl}`);
 }
-check(vercelConfig.buildCommand === "npm test", "Vercel must run the complete reviewed static-site test gate");
+check(vercelConfig.buildCommand === "npm run test:preview", "Vercel must publish only a reviewed noindex preview build");
 check(vercelConfig.outputDirectory === "dist", "Vercel must publish only dist/");
 check(vercelConfig.cleanUrls === false, "Vercel cleanUrls must remain disabled for directory routes");
 check(vercelConfig.trailingSlash === true, "Vercel must canonicalize generated directory routes with trailing slashes");
@@ -141,9 +158,10 @@ for (const localeKey of localeOrder) {
       check(!html.includes('rel="alternate" hreflang='), `${route} preview must not emit placeholder hreflang URLs`);
       check(!html.includes(config.siteUrl), `${route} preview leaks a placeholder origin`);
     } else {
-      check(html.includes(`<link rel="canonical" href="${config.siteUrl}${route}">`), `${route} has wrong canonical`);
+      check(html.includes(`<link rel="canonical" href="${config.siteUrl}${relativeRouteFor(localeKey, page)}">`), `${route} has wrong canonical`);
       check((html.match(/rel="alternate" hreflang=/g) || []).length === localeOrder.length + 1, `${route} has incomplete hreflang links`);
       check(html.includes('hreflang="x-default"'), `${route} lacks x-default`);
+      check(html.includes(`<link rel="sitemap" type="application/xml" href="${config.siteUrl}/sitemap.xml">`), `${route} lacks the project sitemap link`);
     }
     check(html.includes('property="og:image"'), `${route} lacks OG image`);
     check(html.includes('name="twitter:card" content="summary_large_image"'), `${route} lacks Twitter card`);
@@ -186,6 +204,7 @@ for (const localeKey of localeOrder) {
     const resourcePattern = /(?:href|src)="(\/[^"#?]*)/g;
     for (const match of html.matchAll(resourcePattern)) {
       const target = match[1];
+      check(basePath === "" || target === basePath || target.startsWith(`${basePath}/`) || target.startsWith("/#"), `${route} resource escapes the production basePath: ${target}`);
       await access(pathForRoute(target));
       checks += 1;
     }
@@ -285,6 +304,25 @@ for (const name of ["ps2-emu-preview.png", "windows-preview.png", "og-preview.pn
   const details = await stat(join(dist, "assets", name));
   check(details.isFile() && details.size > 100, `${name} is missing or empty`);
 }
+
+const approvedVisuals = {
+  "ps2-emu-preview.png": { width: 940, height: 620, sha256: "4ab6cc6cd780da5e94097b25702b3e0eb9f2367557a3e8cf694e5458a0f6339c" },
+  "windows-preview.png": { width: 2640, height: 1616, sha256: "4011bda6bd03d376c23195fcc1d16439aa591c7499144822857fdbdf9a9e553f" },
+  "og-preview.png": { width: 1200, height: 630, sha256: "955e535b05c7979aafde571fdfbc532254b565a9b681333b172bef251c737242" },
+};
+for (const [name, expected] of Object.entries(approvedVisuals)) {
+  const bytes = await readFile(join(root, "public", "assets", name));
+  check(bytes.subarray(1, 4).toString("ascii") === "PNG", `${name} is not a PNG`);
+  check(bytes.readUInt32BE(16) === expected.width, `${name} width drift`);
+  check(bytes.readUInt32BE(20) === expected.height, `${name} height drift`);
+  check(createHash("sha256").update(bytes).digest("hex") === expected.sha256, `${name} approved visual hash drift`);
+}
+check(
+  (await readFile(join(root, "assets", "ps2-emu-preview.png"))).equals(
+    await readFile(join(root, "public", "assets", "ps2-emu-preview.png")),
+  ),
+  "source preview duplicate must remain byte-identical",
+);
 
 const allText = [homeHtml, mainScript, supportConfigSource].join("\n");
 check(!/fonts\.(googleapis|gstatic)|googletagmanager|google-analytics|plausible\.io|segment\.com/i.test(allText), "external font or analytics dependency detected");

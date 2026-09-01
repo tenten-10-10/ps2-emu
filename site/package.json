@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "npm run build && node scripts/test.mjs",
+    "build:preview": "PS2_SITE_URL=https://ps2-emu.example PS2_SITE_BASE_PATH= node scripts/build.mjs",
+    "test": "npm run test:preview && npm run test:production",
+    "test:preview": "PS2_SITE_URL=https://ps2-emu.example PS2_SITE_BASE_PATH= npm run build && PS2_SITE_URL=https://ps2-emu.example PS2_SITE_BASE_PATH= node scripts/test.mjs",
+    "test:production": "npm run build && node scripts/test.mjs",
     "preview": "python3 -m http.server 4173 --directory dist"
   },
   "engines": {
