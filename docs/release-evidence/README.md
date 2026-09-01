@@ -59,9 +59,9 @@ Each record includes:
   bundle-relative attachments.
 
 Do not record a password, API key, certificate private key, token, phone number,
-home address, personal email address, `/Users/...`, `C:\Users\...`, or another
-personal local path. Use a stable non-email tester alias. A hardware model and
-OS build are required; a serial number is not.
+home address, personal email address, a macOS or Windows home-directory absolute
+path, or another personal local path. Use a stable non-email tester alias. A
+hardware model and OS build are required; a serial number is not.
 
 ## External release work directory
 
