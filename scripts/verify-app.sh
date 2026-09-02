@@ -183,6 +183,7 @@ if [[ "$require_release_signature" == "1" ]]; then
   outer_identifier="$(print -r -- "$outer_signature" | /usr/bin/awk -F= '/^Identifier=/{print $2; exit}')"
   outer_team="$(print -r -- "$outer_signature" | /usr/bin/awk -F= '/^TeamIdentifier=/{print $2; exit}')"
   outer_flags="$(print -r -- "$outer_signature" | /usr/bin/sed -n 's/.*flags=\([^ ]*\).*/\1/p' | /usr/bin/head -n 1)"
+  outer_timestamp="$(print -r -- "$outer_signature" | /usr/bin/awk -F= '/^Timestamp=/{print $2; exit}')"
   if [[ "$outer_identifier" != "jp.planter.ps2emulator" ]]; then
     print -u2 "Unexpected outer signing identifier: ${outer_identifier:-missing}"
     exit 77
@@ -193,6 +194,10 @@ if [[ "$require_release_signature" == "1" ]]; then
   fi
   if [[ "$outer_flags" != *"runtime"* ]]; then
     print -u2 "Hardened Runtime is not enabled on the outer app."
+    exit 77
+  fi
+  if [[ -z "$outer_timestamp" || "$outer_timestamp" == "none" ]]; then
+    print -u2 "The outer app signature does not contain a secure timestamp."
     exit 77
   fi
   outer_entitlements="$(/usr/bin/codesign -d --entitlements :- "$app_path" 2>/dev/null || true)"

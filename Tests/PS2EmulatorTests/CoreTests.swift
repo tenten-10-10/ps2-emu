@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import CryptoKit
 import SwiftUI
 import XCTest
 @testable import PS2Emulator
@@ -154,6 +155,72 @@ final class CoreTests: XCTestCase {
             )?
                 .contains(BundledHomebrewDemo.expectedSHA256) == true
         )
+    }
+
+    @MainActor
+    func testBundledDemoLicenseAcceptanceRevisionCoversEveryReviewedFixtureByte() throws {
+        let projectRoot = bundledDemoFixtureURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let identities = AppPreferences.bundledDemoReviewedFileIdentities
+        let expectedPaths = [
+            "Resources/Fixtures/GCC-COPYING.RUNTIME.txt",
+            "Resources/Fixtures/GCC-COPYING3.txt",
+            "Resources/Fixtures/NEWLIB-COPYING.txt",
+            "Resources/Fixtures/PS2SDK-AFL-2.0.txt",
+            "Resources/Fixtures/PS2SDK-CUBE-NOTICE.md",
+            "Resources/Fixtures/ps2sdk-cube.elf",
+            "Resources/Fixtures/source/Makefile",
+            "Resources/Fixtures/source/cube.c",
+            "Resources/Fixtures/source/mesh_data.c"
+        ]
+
+        XCTAssertEqual(identities.map(\.relativePath).sorted(), expectedPaths)
+        XCTAssertEqual(
+            AppPreferences.bundledDemoLicenseAcceptanceRevision,
+            "sha256-117250b7b0fc8a974e700d3a5177b709575c8c1af0e3f5f737c3832c9b1aff41"
+        )
+        XCTAssertEqual(
+            AppPreferences.bundledDemoLicenseAcceptanceKey,
+            "bundledDemoLicenseAcceptance.v2.sha256-117250b7b0fc8a974e700d3a5177b709575c8c1af0e3f5f737c3832c9b1aff41"
+        )
+
+        for identity in identities {
+            let data = try Data(contentsOf: projectRoot.appendingPathComponent(identity.relativePath))
+            let digest = SHA256.hash(data: data)
+                .map { String(format: "%02x", $0) }
+                .joined()
+            XCTAssertEqual(data.count, identity.byteCount, identity.relativePath)
+            XCTAssertEqual(digest, identity.sha256, identity.relativePath)
+        }
+
+        for index in identities.indices {
+            var changed = identities
+            let identity = changed[index]
+            let replacement = identity.sha256.first == "0" ? "1" : "0"
+            changed[index] = AppPreferences.BundledDemoReviewedFileIdentity(
+                relativePath: identity.relativePath,
+                sha256: replacement + String(identity.sha256.dropFirst()),
+                byteCount: identity.byteCount
+            )
+            XCTAssertNotEqual(
+                AppPreferences.bundledDemoLicenseAcceptanceRevision(for: changed),
+                AppPreferences.bundledDemoLicenseAcceptanceRevision,
+                identity.relativePath
+            )
+
+            changed[index] = AppPreferences.BundledDemoReviewedFileIdentity(
+                relativePath: identity.relativePath,
+                sha256: identity.sha256,
+                byteCount: identity.byteCount + 1
+            )
+            XCTAssertNotEqual(
+                AppPreferences.bundledDemoLicenseAcceptanceRevision(for: changed),
+                AppPreferences.bundledDemoLicenseAcceptanceRevision,
+                identity.relativePath
+            )
+        }
     }
 
     @MainActor
@@ -420,6 +487,11 @@ final class CoreTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
         defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(
+            true,
+            forKey: "bundledDemoLicenseAcceptance.afl-2.0.elf-1293781d9f661763.license-1ecee940922a6886"
+        )
 
         let initial = AppPreferences(defaults: defaults)
         XCTAssertFalse(initial.hasAcceptedSafetyNotice)

@@ -51,7 +51,12 @@ homebrew. Except for the disclosed Cube Demo, no playable content is included.
 PS2 Emu is not affiliated with Sony Interactive Entertainment, PlayStation,
 ps2dev, or the Play! project.
 
-`SOURCE-REVISION.txt` records that reviewed PS2 Emu source commit. The reviewed
-unsigned ZIP SHA, application-source byte match, final ZIP checksum,
+`SOURCE-REVISION.txt` displays that reviewed PS2 Emu source commit. The external
+`.source-binding.p7m` CMS sidecar cryptographically binds that exact revision to
+this final ZIP's filename, byte size, SHA-256, platform, and version. The
+sidecar is not independently RFC3161 timestamped; the final release record must
+show either a replacement timestamped binding or the owner's reviewed
+long-term-validity decision before this candidate is distributed. The
+reviewed unsigned ZIP SHA, application-source byte match, final ZIP checksum,
 Authenticode publisher, timestamp, platform, and source revision must all be
 treated as one release identity.

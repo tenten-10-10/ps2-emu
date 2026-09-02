@@ -74,6 +74,7 @@ cleanup() {
 trap cleanup EXIT
 
 /usr/bin/ditto "$app_path" "$staging/PS2 Emu.app"
+/usr/bin/xattr -cr "$staging/PS2 Emu.app"
 /bin/ln -s /Applications "$staging/Applications"
 if [[ "$bundle_play" == "1" ]]; then
   /usr/bin/ditto "$project_root/Resources/Play-License.txt" "$staging/Licenses and Notices/Play-License.txt"

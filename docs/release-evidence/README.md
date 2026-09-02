@@ -121,6 +121,8 @@ node docs/release-evidence/validate-evidence.mjs \
 Run the final fail-closed gate only against the external release work directory:
 
 ```sh
+EXPECTED_WINDOWS_SIGNER_CERT_SHA256='<64 lowercase hex characters>' \
+PS2_OPENSSL_PATH='/usr/bin/openssl' \
 RELEASE_EVIDENCE_BUNDLE_ROOT='/absolute/path/outside/repo/PS2-Emu-0.1.0-release-work' \
 node docs/release-evidence/validate-evidence.mjs \
   --require-pass \
@@ -204,6 +206,22 @@ Record `signtool verify /pa /all /v`, trusted timestamp, Defender, SmartScreen,
 Smart App Control, standard-user and removal behavior. The ARM64 template always
 records an ARM64-native launcher with an external x64 Play! process under
 Windows 11 x64 emulation.
+
+Windows passing evidence must report `cms-signed-release-binding-v1` and attach
+the external `.source-binding.p7m`. Its canonical CMS-signed JSON binds the
+exact Git SHA to the final ZIP filename, byte size, SHA-256, version and
+platform. `--require-pass` verifies the CMS bytes and pins its signer with
+`EXPECTED_WINDOWS_SIGNER_CERT_SHA256`; a plaintext `SOURCE-REVISION.txt`, ZIP
+checksum, or typed pass boolean alone is insufficient. The CMS sidecar stays
+outside the ZIP to avoid a self-referential artifact hash.
+
+The current CMS sidecar is not independently RFC3161 timestamped. The signer
+records this as `rfc3161Timestamped = false` and leaves the corresponding human
+gate false. Do not approve binary publication until an independently timestamped
+binding (for example, a verified timestamped catalog) replaces this limitation
+or the release owner records a reviewed long-term-validity decision outside the
+automated PASS result. The launcher's Authenticode timestamp does not timestamp
+the separate CMS sidecar.
 
 The approved Windows Play! lane is hash-only: exact file bytes can match while
 the publisher remains unverified. Preserve the raw output from

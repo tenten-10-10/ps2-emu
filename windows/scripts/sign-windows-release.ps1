@@ -42,6 +42,7 @@ $maximumArchiveBytes = 1GB
 $maximumExpandedBytes = 2GB
 $maximumArchiveEntries = 10000
 $codeSigningEkuOid = '1.3.6.1.5.5.7.3.3'
+$sourceRevisionBindingMethod = 'cms-signed-release-binding-v1'
 $bundledDemoSha256 = '1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584'
 $bundledDemoRelativeDirectory = 'resources/PS2SDK-Cube-Demo'
 $bundledDemoElfRelativePath = "$bundledDemoRelativeDirectory/ps2sdk-cube.elf"
@@ -57,6 +58,7 @@ $workRoot = $null
 $temporaryOutputZip = $null
 $temporaryChecksumPath = $null
 $temporaryEvidencePath = $null
+$temporarySourceBindingPath = $null
 $createdOutputs = [System.Collections.Generic.List[string]]::new()
 
 function Fail([string]$Message) {
@@ -65,6 +67,83 @@ function Fail([string]$Message) {
 
 function Get-NormalizedSha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Get-CertificateSha256([System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate) {
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return (($sha.ComputeHash($Certificate.RawData) | ForEach-Object { $_.ToString('x2') }) -join '')
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function New-SourceRevisionBindingEvidence(
+    [string]$Path,
+    [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+    [string]$Version,
+    [string]$PlatformID,
+    [string]$Revision,
+    [string]$ArtifactName,
+    [long]$ArtifactSizeBytes,
+    [string]$ArtifactSha256
+) {
+    Add-Type -AssemblyName System.Security.Cryptography.Pkcs
+    $certificateSha256 = Get-CertificateSha256 $Certificate
+    $manifest = [ordered]@{
+        schemaVersion = 1
+        bindingMethod = $sourceRevisionBindingMethod
+        product = 'PS2 Emu'
+        version = $Version
+        platformID = $PlatformID
+        sourceRevisionAlgorithm = 'git-sha1'
+        sourceRevision = $Revision
+        finalArtifactName = $ArtifactName
+        finalArtifactSizeBytes = $ArtifactSizeBytes
+        finalArtifactSha256 = $ArtifactSha256
+        signerCertificateSha256 = $certificateSha256
+    }
+    $canonicalBytes = [System.Text.UTF8Encoding]::new($false).GetBytes((($manifest | ConvertTo-Json -Compress) + "`n"))
+    $contentInfo = [System.Security.Cryptography.Pkcs.ContentInfo]::new($canonicalBytes)
+    $cms = [System.Security.Cryptography.Pkcs.SignedCms]::new($contentInfo, $false)
+    $signer = [System.Security.Cryptography.Pkcs.CmsSigner]::new(
+        [System.Security.Cryptography.Pkcs.SubjectIdentifierType]::IssuerAndSerialNumber,
+        $Certificate
+    )
+    $signer.IncludeOption = [System.Security.Cryptography.X509Certificates.X509IncludeOption]::EndCertOnly
+    $signer.DigestAlgorithm = [System.Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+    $cms.ComputeSignature($signer)
+    [System.IO.File]::WriteAllBytes($Path, $cms.Encode())
+    return [pscustomobject]@{
+        CanonicalBytes = $canonicalBytes
+        CertificateSha256 = $certificateSha256
+    }
+}
+
+function Test-SourceRevisionBindingEvidence(
+    [string]$Path,
+    [byte[]]$ExpectedContent,
+    [string]$ExpectedCertificateSha256
+) {
+    Add-Type -AssemblyName System.Security.Cryptography.Pkcs
+    $cms = [System.Security.Cryptography.Pkcs.SignedCms]::new()
+    $cms.Decode([System.IO.File]::ReadAllBytes($Path))
+    if ($cms.SignerInfos.Count -ne 1) { Fail 'Source binding CMS must contain exactly one signer.' }
+    $cms.CheckSignature($true)
+    $cms.CheckSignature($false)
+    $signerCertificate = $cms.SignerInfos[0].Certificate
+    if ($null -eq $signerCertificate -or (Get-CertificateSha256 $signerCertificate) -cne $ExpectedCertificateSha256) {
+        Fail 'Source binding CMS signer certificate does not match the selected code-signing certificate.'
+    }
+    if ([System.Convert]::ToBase64String($cms.ContentInfo.Content) -cne [System.Convert]::ToBase64String($ExpectedContent)) {
+        Fail 'Source binding CMS content changed after signing.'
+    }
+    return @(
+        'cmsCryptographicSignature=pass',
+        'cmsCertificateChain=pass',
+        "cmsSignerCertificateSha256=$ExpectedCertificateSha256"
+    )
 }
 
 function Test-ReviewedSourceCheckout([string]$Revision) {
@@ -529,7 +608,8 @@ $publicZipName = "PS2-Emu-$version-launcher-Windows-$publicArchToken.zip"
 $publicZipPath = Join-Path $resolvedOutputDirectory $publicZipName
 $checksumPath = "$publicZipPath.sha256"
 $evidencePath = "$publicZipPath.release-evidence.json"
-foreach ($target in @($publicZipPath, $checksumPath, $evidencePath)) {
+$sourceBindingPath = "$publicZipPath.source-binding.p7m"
+foreach ($target in @($publicZipPath, $checksumPath, $evidencePath, $sourceBindingPath)) {
     if (Test-Path -LiteralPath $target) { Fail "Refusing to overwrite an existing release output: $(Split-Path -Leaf $target)" }
 }
 
@@ -579,7 +659,6 @@ try {
     }
     if ($null -eq $signature.TimeStamperCertificate) { Fail 'The final launcher has no verifiable RFC3161 timestamp certificate.' }
     if ((Get-PeMachine $package.LauncherPath) -ne $expectedMachine) { Fail 'Signing changed or corrupted the launcher architecture.' }
-
     $template = [System.IO.File]::ReadAllText($publicReadmeTemplate)
     if (-not $template.Contains('@VERSION@') -or -not $template.Contains('@ARCHITECTURE@') -or -not $template.Contains('@SOURCE_REVISION@')) {
         Fail 'The signed public README template is missing a required placeholder.'
@@ -638,15 +717,47 @@ try {
     $launcherSha = Get-NormalizedSha256 $finalPackage.LauncherPath
     $readmeSha = Get-NormalizedSha256 (Join-Path $packageRoot 'READ-ME-FIRST.txt')
     $sourceRevisionFileSha = Get-NormalizedSha256 (Join-Path $packageRoot 'SOURCE-REVISION.txt')
+    $platformID = if ($architectureLabel -ceq 'x64') { 'windows-x64' } else { 'windows-arm64' }
+    $temporarySourceBindingPath = Join-Path $resolvedOutputDirectory (".{0}.{1}.tmp" -f (Split-Path -Leaf $sourceBindingPath), [guid]::NewGuid().ToString('N'))
+    $sourceBinding = New-SourceRevisionBindingEvidence `
+        $temporarySourceBindingPath `
+        $certificate `
+        $version `
+        $platformID `
+        $SourceRevision `
+        $publicZipName `
+        $publicZipInfo.Length `
+        $publicZipSha
+    $sourceBindingVerification = Test-SourceRevisionBindingEvidence `
+        $temporarySourceBindingPath `
+        $sourceBinding.CanonicalBytes `
+        $sourceBinding.CertificateSha256
+    $sourceBindingSha256 = Get-NormalizedSha256 $temporarySourceBindingPath
+    [System.IO.File]::Move($temporarySourceBindingPath, $sourceBindingPath)
+    $temporarySourceBindingPath = $null
+    $createdOutputs.Add($sourceBindingPath)
 
     $evidence = [ordered]@{
-        schemaVersion = 1
+        schemaVersion = 2
         product = 'PS2 Emu'
         releaseState = 'signed-candidate-human-gates-incomplete'
         publicDistributionApproved = $false
         version = $version
         architecture = if ($architectureLabel -ceq 'x64') { 'windows-x64' } else { 'windows-arm64-launcher-x64-core' }
         sourceRevision = $SourceRevision
+        sourceBinding = [ordered]@{
+            method = $sourceRevisionBindingMethod
+            artifactReportedRevision = $SourceRevision
+            signedEvidenceFileName = Split-Path -Leaf $sourceBindingPath
+            signedEvidenceSha256 = $sourceBindingSha256
+            signerCertificateSha256 = $sourceBinding.CertificateSha256
+            signedPayloadCoversFinalArtifact = $true
+            cmsCryptographicSignatureVerified = $true
+            cmsCertificateChainVerified = $true
+            rfc3161Timestamped = $false
+            timestampNote = 'The launcher Authenticode signature is RFC3161 timestamped; the CMS source-binding sidecar is not independently timestamped.'
+            verificationOutput = [string[]]$sourceBindingVerification
+        }
         generatedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
         unsignedInput = [ordered]@{
             fileName = $unsignedInfo.Name
@@ -690,9 +801,12 @@ try {
             exactPeArchitecture = $true
             signtoolPolicyVerification = $true
             rfc3161TimestampPresent = $true
-            sourceRevisionAdded = $true
+            sourceRevisionBindingCmsVerified = $true
+            sourceRevisionBindingCertificateChainVerified = $true
+            sourceRevisionBindingMatchesFinalZip = $true
         }
         humanGates = [ordered]@{
+            sourceBindingIndependentTimestampGatePassed = $false
             bundledDemoLicenseReviewRecorded = $false
             realHardwareEvidenceRecorded = $false
             browserDownloadSecurityEvidenceRecorded = $false
@@ -734,7 +848,7 @@ finally {
     if ($null -ne $temporaryOutputZip -and (Test-Path -LiteralPath $temporaryOutputZip -PathType Leaf)) {
         Remove-Item -LiteralPath $temporaryOutputZip -Force
     }
-    foreach ($temporarySidecar in @($temporaryChecksumPath, $temporaryEvidencePath)) {
+    foreach ($temporarySidecar in @($temporaryChecksumPath, $temporaryEvidencePath, $temporarySourceBindingPath)) {
         if ($null -ne $temporarySidecar -and (Test-Path -LiteralPath $temporarySidecar -PathType Leaf)) {
             Remove-Item -LiteralPath $temporarySidecar -Force
         }

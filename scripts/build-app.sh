@@ -140,6 +140,12 @@ if [[ -e "$output_app" ]]; then
   print "Previous build preserved at: $backup"
 fi
 /usr/bin/ditto "$temp_app" "$output_app"
+# File-provider backed output folders can attach Finder metadata while copying an
+# app bundle. Those extended attributes are not release content and make a later
+# strict Developer ID signing operation fail. Strip them only from this newly
+# generated output, then re-verify the copied ad hoc signature.
+/usr/bin/xattr -cr "$output_app"
+/usr/bin/codesign --verify --strict --verbose=2 "$output_app"
 
 print "Built: $output_app"
 if [[ "$bundle_play" == "1" ]]; then

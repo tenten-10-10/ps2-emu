@@ -17,3 +17,8 @@ docs
 scripts
 site
 windows
+# Repeated below as required release-binding files: package-source verifies each
+# exact entry exists in the selected commit before archiving the windows tree.
+windows/scripts/lib/source-revision-binding.mjs
+windows/scripts/verify-release-source-binding.mjs
+windows/tests/source-revision-binding.test.mjs

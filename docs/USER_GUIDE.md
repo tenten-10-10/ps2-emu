@@ -33,7 +33,7 @@ Windows 10 on Armはこの構成の対象外です。
 
 PS2 EmuはPlay!、Qt、MoltenVK、`states.db`、市販ゲーム、BIOS、暗号鍵、
 著作権で保護されたゲーム画像を公開候補へ同梱・取得しません。唯一の例外は、
-AFL 2.0、newlib、GCCの必要通知と正確なソースを同梱するオープンソースhomebrew
+AFL 2.0、newlib、GCCの必要通知と一緒に配布するオープンソースhomebrew
 `PS2SDK Cube Demo`です。対応拡張子であることは、ファイルの安全性、完全性、
 適法性、ゲーム互換性を保証しません。
 
@@ -46,6 +46,16 @@ homebrewデモです。起動のたびにサイズとSHA-256
 を検証し、不一致なら実行しません。ライブラリから削除した後は自動復元しません。
 アプリ内の「オープンソースライセンス」で帰属、AFL 2.0、newlib、GCC GPLv3と
 Runtime Library Exceptionを確認できます。
+
+Cubeサンプルの直接ソース`cube.c`、`mesh_data.c`、`Makefile`は、各リリースに
+添付する`PS2-Emu-0.1.0-source.zip`と、配布物に記録された40桁の
+`SOURCE_REVISION`に固定した[`tenten-10-10/ps2-emu`](https://github.com/tenten-10-10/ps2-emu)
+のcommit URL `https://github.com/tenten-10-10/ps2-emu/tree/{SOURCE_REVISION}`で、
+4platformすべてに提供します。macOSのアプリとDMGには、この3ファイルの
+固定済みバイトもオフライン参照用に同梱します。Windows ZIPに3ファイルは
+入らないため、添付source ZIPまたは同じ固定commitの公開repositoryを参照して
+ください。ELFに静的リンクされたps2sdkライブラリのソースは、
+`PS2SDK-CUBE-NOTICE.md`に記載した固定済み上流ps2sdk commitで参照できます。
 
 ## Play!を準備する
 

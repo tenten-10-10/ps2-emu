@@ -45,7 +45,7 @@ fi
 source_commit="$($script_dir/verify-release-source.sh)"
 export SOURCE_REVISION="$source_commit"
 
-if [[ ! -d "$app_path" || ! -x "$app_path/Contents/MacOS/PS2Emulator" ]]; then
+if [[ ! -d "$app_path" || -L "$app_path" || ! -x "$app_path/Contents/MacOS/PS2Emulator" ]]; then
   print -u2 "App bundle not found or incomplete: $app_path"
   exit 66
 fi
@@ -55,13 +55,17 @@ if [[ "$mode_marker" != "false" ]]; then
   print -u2 "App distribution marker is not external-core: $mode_marker"
   exit 74
 fi
-PS2_BUNDLE_PLAY=0 PS2_TARGET_ARCH="$target_arch" \
-  "$script_dir/verify-app.sh" "$app_path" >/dev/null
 embedded_revision="$(/usr/libexec/PlistBuddy -c 'Print :PS2SourceRevision' "$app_path/Contents/Info.plist" 2>/dev/null || true)"
 if [[ "$embedded_revision" != "$source_commit" ]]; then
   print -u2 "Unsigned app is not bound to the reviewed source commit: expected $source_commit, found ${embedded_revision:-missing}"
   exit 74
 fi
+# A freshly generated app copied into a file-provider backed folder can acquire
+# Finder/resource-fork metadata that codesign rejects. Clear extended attributes
+# only after the app path, distribution mode, and embedded revision are bound.
+/usr/bin/xattr -cr "$app_path"
+PS2_BUNDLE_PLAY=0 PS2_TARGET_ARCH="$target_arch" \
+  "$script_dir/verify-app.sh" "$app_path" >/dev/null
 
 # Sign only the outer bundle. Do not use --deep: the upstream Play! bundle must
 # retain its own Developer ID signature and exact code directory hash.

@@ -205,12 +205,31 @@ Play.app.
 Run the public preflight with the same explicit mode:
 
 ```sh
+RELEASE_EVIDENCE_BUNDLE_ROOT='/absolute/path/outside/repo/PS2-Emu-0.1.0-release-work' \
+SOURCE_REVISION='the-same-40-character-reviewed-commit' \
+EXPECTED_OUTER_TEAM_ID='TEAMID' \
+EXPECTED_WINDOWS_SIGNER_CERT_SHA256='64-lowercase-hex-characters' \
+PS2_OPENSSL_PATH='/usr/bin/openssl' \
 PS2_BUNDLE_PLAY=0 PS2_TARGET_ARCH=arm64 \
 ./scripts/public-release-preflight.sh '/absolute/path/to/unbundled-arm64-output'
 
+RELEASE_EVIDENCE_BUNDLE_ROOT='/absolute/path/outside/repo/PS2-Emu-0.1.0-release-work' \
+SOURCE_REVISION='the-same-40-character-reviewed-commit' \
+EXPECTED_OUTER_TEAM_ID='TEAMID' \
+EXPECTED_WINDOWS_SIGNER_CERT_SHA256='64-lowercase-hex-characters' \
+PS2_OPENSSL_PATH='/usr/bin/openssl' \
 PS2_BUNDLE_PLAY=0 PS2_TARGET_ARCH=x86_64 \
 ./scripts/public-release-preflight.sh '/absolute/path/to/unbundled-x86_64-output'
 ```
+
+The named external bundle must use the layout documented in
+`docs/release-evidence/README.md`. The preflight passes every regular platform
+JSON below its `evidence/` directory to `validate-evidence.mjs --require-pass`.
+That validator requires the complete four-platform set and re-hashes the source
+archive, final artifacts, and every referenced attachment. Completed evidence
+must never be copied into this Git repository. The Windows signer fingerprint
+must be copied from, then independently compared with, the owner-reviewed code
+signing certificate before it is supplied to either command.
 
 External-core mode removes the bundled Play!/Qt/MoltenVK redistribution gates,
 but the preflight still requires:
@@ -218,7 +237,8 @@ but the preflight still requires:
 - a reviewed top-level wrapper `LICENSE`;
 - Developer ID signing with Hardened Runtime;
 - a signed, notarized, stapled, Gatekeeper-accepted DMG;
-- real-Mac evidence for external-core selection, graphics, audio, controller,
+- a passing immutable external four-platform evidence bundle, including
+  real-Mac evidence for external-core selection, graphics, audio, controller,
   memory card, save state, stop, and relaunch on each target architecture;
 - a clean-Mac browser-download and Gatekeeper test;
 - the reviewed teaser-site build and human legal/release-owner review.

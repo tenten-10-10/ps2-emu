@@ -140,7 +140,10 @@ the architecture from the unsigned filename and package root. It then:
   again with PowerShell;
 - replaces the internal unsigned warning with the signed public README and adds
   `SOURCE-REVISION.txt`; and
-- writes a distinct public-name candidate ZIP, `.sha256` file, and
+- creates an attached CMS sidecar after the final ZIP exists. Its canonical
+  signed JSON binds version, platform, exact Git SHA, ZIP filename, byte size,
+  ZIP SHA-256, and the same code-signing certificate SHA-256;
+- writes a distinct public-name candidate ZIP, `.sha256`, `.source-binding.p7m`, and
   release-evidence JSON under `windows/dist/signed-candidates/` by default. The
   README and evidence keep public approval false until the human gates pass.
 
@@ -150,6 +153,19 @@ key, PFX password, token, or signing-service credential. Run `npm ci` and
 Certificate enrollment,
 private-key provisioning, publisher approval, and timestamp-service approval are
 human responsibilities. Existing output files are never overwritten.
+Use `node scripts/verify-release-source-binding.mjs --signed-evidence <path.p7m> --expected-revision <sha>`
+to cryptographically verify the sidecar. The final evidence gate also requires
+`EXPECTED_WINDOWS_SIGNER_CERT_SHA256` to pin the owner-reviewed certificate;
+typed evidence fields alone cannot satisfy the gate.
+Use an absolute `PS2_OPENSSL_PATH` (the macOS final gate uses
+`/usr/bin/openssl`) alongside `signtool verify /pa /all /v /tw` when capturing
+the final binding evidence.
+
+The CMS sidecar is not independently RFC3161 timestamped in this script. It is
+recorded as a false human gate, so the candidate must not be publicly promoted
+until a timestamped binding/catalog is implemented or the release owner makes
+a separately reviewed long-term-validity decision. The timestamped launcher
+signature does not timestamp the CMS sidecar.
 
 This lane does not publish a GitHub Release and does not replace Windows 11 x64
 and ARM64 real-hardware, browser-download, Defender, SmartScreen, Smart App

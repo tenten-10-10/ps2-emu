@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyCmsSignedReleaseBinding } from "../../windows/scripts/lib/source-revision-binding.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
@@ -154,7 +155,7 @@ function checkRecordShape(record, errors) {
     "attachments", "failures",
   ], "$")) return;
 
-  if (record.schemaVersion !== 1) add(errors, "schemaVersion", "must equal 1");
+  if (record.schemaVersion !== 2) add(errors, "schemaVersion", "must equal 2");
   if (record.recordState !== "template" && record.recordState !== "completed") {
     add(errors, "recordState", "must be template or completed");
   }
@@ -192,12 +193,20 @@ function checkRecordShape(record, errors) {
     nullableSha256(errors, record.finalArtifact.sha256, "finalArtifact.sha256");
   }
 
-  if (exactKeys(errors, record.sourceBinding, ["artifactReportedRevision", "verification", "rawEvidenceSha256"], "sourceBinding")) {
+  if (exactKeys(errors, record.sourceBinding, ["artifactReportedRevision", "authentication", "verification", "rawEvidenceSha256"], "sourceBinding")) {
     if (record.sourceBinding.artifactReportedRevision !== null) {
       const expectedPattern = record.source?.revisionAlgorithm === "git-sha256" ? SHA256 : SHA1;
       if (typeof record.sourceBinding.artifactReportedRevision !== "string" || !expectedPattern.test(record.sourceBinding.artifactReportedRevision)) {
         add(errors, "sourceBinding.artifactReportedRevision", `does not match ${record.source?.revisionAlgorithm || "the source revision algorithm"}`);
       }
+    }
+    if (exactKeys(errors, record.sourceBinding.authentication, ["method", "signerCertificateSha256", "signedPayloadCoversFinalArtifact"], "sourceBinding.authentication")) {
+      if (
+        record.sourceBinding.authentication.method !== null
+        && !new Set(["signed-bundle-metadata", "cms-signed-release-binding-v1"]).has(record.sourceBinding.authentication.method)
+      ) add(errors, "sourceBinding.authentication.method", "is unsupported");
+      nullableSha256(errors, record.sourceBinding.authentication.signerCertificateSha256, "sourceBinding.authentication.signerCertificateSha256");
+      nullableBoolean(errors, record.sourceBinding.authentication.signedPayloadCoversFinalArtifact, "sourceBinding.authentication.signedPayloadCoversFinalArtifact");
     }
     checkShape(errors, record.sourceBinding.verification, "sourceBinding.verification");
     nullableSha256(errors, record.sourceBinding.rawEvidenceSha256, "sourceBinding.rawEvidenceSha256");
@@ -384,7 +393,8 @@ function validateTemplate(record, errors) {
   const nullableEvidencePaths = [
     "source.revision", "source.archive.name", "source.archive.sizeBytes", "source.archive.sha256",
     "finalArtifact.name", "finalArtifact.sizeBytes", "finalArtifact.sha256",
-    "sourceBinding.artifactReportedRevision", "sourceBinding.rawEvidenceSha256",
+    "sourceBinding.artifactReportedRevision", "sourceBinding.authentication.method",
+    "sourceBinding.authentication.signerCertificateSha256", "sourceBinding.authentication.signedPayloadCoversFinalArtifact", "sourceBinding.rawEvidenceSha256",
     "target.observedOSVersion", "target.observedOSBuild", "target.hardware.manufacturer", "target.hardware.model",
     "target.hardware.cpuOrSoC", "target.hardware.memoryGiB", "target.hardware.physicalMachine",
     "download.browserName", "download.browserVersion", "download.url", "download.downloadedAt",
@@ -444,7 +454,8 @@ function validateCompleted(record, errors, requirePass) {
   const requiredPaths = [
     "source.revision", "source.archive.name", "source.archive.sizeBytes", "source.archive.sha256",
     "finalArtifact.name", "finalArtifact.sizeBytes", "finalArtifact.sha256",
-    "sourceBinding.artifactReportedRevision", "sourceBinding.rawEvidenceSha256",
+    "sourceBinding.artifactReportedRevision", "sourceBinding.authentication.method",
+    "sourceBinding.authentication.signedPayloadCoversFinalArtifact", "sourceBinding.rawEvidenceSha256",
     "target.observedOSVersion", "target.observedOSBuild", "target.hardware.manufacturer", "target.hardware.model",
     "target.hardware.cpuOrSoC", "target.hardware.memoryGiB", "target.hardware.physicalMachine",
     "download.browserName", "download.browserVersion", "download.url", "download.downloadedAt",
@@ -476,6 +487,15 @@ function validateCompleted(record, errors, requirePass) {
   }
   if (record.sourceBinding?.artifactReportedRevision && record.source?.revision && record.sourceBinding.artifactReportedRevision !== record.source.revision) {
     add(errors, "sourceBinding.artifactReportedRevision", "must exactly match source.revision");
+  }
+  const expectedBindingMethod = record.target?.operatingSystem === "Windows"
+    ? "cms-signed-release-binding-v1"
+    : "signed-bundle-metadata";
+  if (record.sourceBinding?.authentication?.method !== expectedBindingMethod) {
+    add(errors, "sourceBinding.authentication.method", `must equal ${expectedBindingMethod} for ${record.target?.operatingSystem || "this platform"}`);
+  }
+  if (record.sourceBinding?.authentication?.signedPayloadCoversFinalArtifact !== true) {
+    add(errors, "sourceBinding.authentication.signedPayloadCoversFinalArtifact", "must be true for completed evidence");
   }
   if (record.download?.downloadedSha256 && record.finalArtifact?.sha256 && record.download.downloadedSha256 !== record.finalArtifact.sha256) {
     add(errors, "download.downloadedSha256", "must exactly match finalArtifact.sha256");
@@ -547,6 +567,12 @@ function validateCompleted(record, errors, requirePass) {
     if (record.externalPlay?.identityMode !== "hash-only") add(errors, "externalPlay.identityMode", "must be hash-only on Windows");
     if (record.externalPlay?.publisherVerified !== false) add(errors, "externalPlay.publisherVerified", "must be false for the approved unsigned Windows Play! build");
     if (record.externalPlay?.publisherStatus !== "NotSigned") add(errors, "externalPlay.publisherStatus", "must record NotSigned for the approved Windows Play! build");
+    requireFilled(errors, record.sourceBinding?.authentication?.signerCertificateSha256, "sourceBinding.authentication.signerCertificateSha256");
+    if (
+      record.sourceBinding?.authentication?.signerCertificateSha256
+      && windows?.signerCertificateSha256
+      && record.sourceBinding.authentication.signerCertificateSha256 !== windows.signerCertificateSha256
+    ) add(errors, "sourceBinding.authentication.signerCertificateSha256", "must exactly match platformSecurity.windows.signerCertificateSha256");
   }
 
   if (!requirePass) return;
@@ -642,7 +668,39 @@ async function verifyReferencedFile(root, relativePath, expectedSize, expectedSh
   }
 }
 
-async function verifyBundleFiles(record, bundleRoot, errors) {
+async function verifyWindowsSourceBinding(record, bundleRoot, expectedSignerCertificateSha256, errors) {
+  if (typeof expectedSignerCertificateSha256 !== "string" || !SHA256.test(expectedSignerCertificateSha256)) {
+    add(errors, "$env.EXPECTED_WINDOWS_SIGNER_CERT_SHA256", "must pin the owner-reviewed Windows signer certificate for --require-pass");
+    return;
+  }
+  const evidenceSha256 = record.sourceBinding?.rawEvidenceSha256;
+  const matches = (record.attachments || []).filter((attachment) => attachment?.sha256 === evidenceSha256);
+  if (matches.length !== 1 || !matches[0].relativePath.endsWith(".p7m")) {
+    add(errors, "sourceBinding.rawEvidenceSha256", "must identify exactly one CMS .p7m attachment");
+    return;
+  }
+  if (matches[0].mediaType !== "application/pkcs7-mime") {
+    add(errors, "sourceBinding.rawEvidenceSha256", "CMS attachment mediaType must equal application/pkcs7-mime");
+    return;
+  }
+  const signedEvidencePath = safeBundlePath(bundleRoot, matches[0].relativePath, "sourceBinding.rawEvidenceSha256", errors);
+  if (!signedEvidencePath) return;
+  try {
+    await verifyCmsSignedReleaseBinding(signedEvidencePath, {
+      version: record.product?.version,
+      platformID: record.target?.platformID,
+      sourceRevision: record.source?.revision,
+      finalArtifactName: record.finalArtifact?.name,
+      finalArtifactSizeBytes: record.finalArtifact?.sizeBytes,
+      finalArtifactSha256: record.finalArtifact?.sha256,
+      signerCertificateSha256: expectedSignerCertificateSha256,
+    });
+  } catch (error) {
+    add(errors, "sourceBinding.rawEvidenceSha256", `CMS signature or signed release binding verification failed: ${error.message}`);
+  }
+}
+
+async function verifyBundleFiles(record, bundleRoot, errors, requirePass, expectedWindowsSignerCertificateSha256) {
   const rootStat = await fs.lstat(bundleRoot).catch(() => null);
   if (!rootStat?.isDirectory() || rootStat.isSymbolicLink()) {
     add(errors, "$", `RELEASE_EVIDENCE_BUNDLE_ROOT is not a regular directory: ${bundleRoot}`);
@@ -686,6 +744,9 @@ async function verifyBundleFiles(record, bundleRoot, errors) {
       errors,
     );
   }
+  if (requirePass && record.target?.operatingSystem === "Windows") {
+    await verifyWindowsSourceBinding(record, bundleRoot, expectedWindowsSignerCertificateSha256, errors);
+  }
 }
 
 async function validateFile(filePath, mode, requirePass, bundleRoot) {
@@ -714,7 +775,7 @@ async function validateFile(filePath, mode, requirePass, bundleRoot) {
   if (mode === "template") validateTemplate(record, errors);
   else {
     validateCompleted(record, errors, requirePass);
-    if (bundleRoot) await verifyBundleFiles(record, bundleRoot, errors);
+    if (bundleRoot) await verifyBundleFiles(record, bundleRoot, errors, requirePass, process.env.EXPECTED_WINDOWS_SIGNER_CERT_SHA256 || null);
   }
   return { errors, record };
 }

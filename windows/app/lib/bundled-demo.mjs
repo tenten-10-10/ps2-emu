@@ -7,10 +7,6 @@ export const BUNDLED_DEMO_TITLE = "PS2SDK Cube Demo";
 export const BUNDLED_DEMO_DIRECTORY_NAME = "PS2SDK-Cube-Demo";
 export const BUNDLED_DEMO_FILE_NAME = "ps2sdk-cube.elf";
 export const BUNDLED_DEMO_SHA256 = "1293781d9f661763e5e598b8c7037830462b05b53e532c298f8515b0df533584";
-// SHA-256 of the exact display name, upstream revision, ELF identity, license
-// identifier, and AFL text identity. Changing any assent-visible input requires
-// a new affirmative acceptance instead of inheriting an older boolean.
-export const BUNDLED_DEMO_TERMS_REVISION = "c1bb50e290d391277fa8ab117d8edaad68d736aa5f0a6e93639ad58951cda59c";
 export const BUNDLED_DEMO_RESOURCE_IDENTITIES = Object.freeze({
   [BUNDLED_DEMO_FILE_NAME]: Object.freeze({
     label: "bundled PS2SDK Cube Demo",
@@ -24,8 +20,8 @@ export const BUNDLED_DEMO_RESOURCE_IDENTITIES = Object.freeze({
   }),
   "PS2SDK-CUBE-NOTICE.md": Object.freeze({
     label: "bundled PS2SDK Cube Demo notice",
-    sha256: "09929c9d0bd105afd0d25e65c254871181965f25dc780959134260810c8a7314",
-    size: 6_661,
+    sha256: "74e4ebb0e2f098bd02dc68afb3d48c22cfd1d9ae045986786ddd54fa77b0ba94",
+    size: 7_280,
   }),
   "NEWLIB-COPYING.txt": Object.freeze({
     label: "bundled newlib license collection",
@@ -43,6 +39,21 @@ export const BUNDLED_DEMO_RESOURCE_IDENTITIES = Object.freeze({
     size: 35_147,
   }),
 });
+
+export function bundledDemoTermsRevisionFor(resourceIdentities) {
+  const manifest = `ps2sdk-cube-demo-assent-revision-v2\n${Object.entries(resourceIdentities)
+    .sort(([left], [right]) => left.localeCompare(right, "en"))
+    .map(([fileName, identity]) => `${fileName}|${identity.sha256}|${identity.size}`)
+    .join("\n")}\n`;
+  return `sha256-${crypto.createHash("sha256").update(manifest, "utf8").digest("hex")}`;
+}
+
+// Bind acceptance to every exact executable, license, and provenance-notice
+// byte presented by the Windows package. Any reviewed resource change forces a
+// fresh affirmative acceptance instead of inheriting an older boolean.
+export const BUNDLED_DEMO_TERMS_REVISION = bundledDemoTermsRevisionFor(
+  BUNDLED_DEMO_RESOURCE_IDENTITIES,
+);
 
 export function bundledDemoPath(resourcesDirectory) {
   if (typeof resourcesDirectory !== "string" || !path.isAbsolute(resourcesDirectory)) {

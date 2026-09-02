@@ -8,11 +8,36 @@ import {
   BUNDLED_DEMO_FILE_NAME,
   BUNDLED_DEMO_RESOURCE_IDENTITIES,
   BUNDLED_DEMO_SHA256,
+  BUNDLED_DEMO_TERMS_REVISION,
+  bundledDemoTermsRevisionFor,
   bundledDemoPath,
   verifyBundledDemo,
   verifyBundledDemoDocument,
   verifyBundledDemoResourceSet,
 } from "../app/lib/bundled-demo.mjs";
+
+test("bundled demo assent revision covers every packaged resource identity", () => {
+  assert.equal(
+    BUNDLED_DEMO_TERMS_REVISION,
+    "sha256-433531979fbf8284df4b943431c2517299408ddee45e49ae5c86d0caec77b450",
+  );
+  for (const [fileName, identity] of Object.entries(BUNDLED_DEMO_RESOURCE_IDENTITIES)) {
+    for (const changedIdentity of [
+      { ...identity, sha256: `${identity.sha256[0] === "0" ? "1" : "0"}${identity.sha256.slice(1)}` },
+      { ...identity, size: identity.size + 1 },
+    ]) {
+      const changed = {
+        ...BUNDLED_DEMO_RESOURCE_IDENTITIES,
+        [fileName]: changedIdentity,
+      };
+      assert.notEqual(
+        bundledDemoTermsRevisionFor(changed),
+        BUNDLED_DEMO_TERMS_REVISION,
+        fileName,
+      );
+    }
+  }
+});
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(testDirectory, "..", "..");

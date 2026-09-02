@@ -48,8 +48,13 @@ fi
 /usr/bin/codesign --verify --strict --verbose=2 "$dmg_path"
 dmg_signature="$(/usr/bin/codesign -d --verbose=4 "$dmg_path" 2>&1)"
 dmg_team="$(print -r -- "$dmg_signature" | /usr/bin/awk -F= '/^TeamIdentifier=/{print $2; exit}')"
+dmg_timestamp="$(print -r -- "$dmg_signature" | /usr/bin/awk -F= '/^Timestamp=/{print $2; exit}')"
 if [[ "$dmg_team" != "$EXPECTED_OUTER_TEAM_ID" ]]; then
   print -u2 "Unexpected DMG signing team: ${dmg_team:-missing}"
+  exit 77
+fi
+if [[ -z "$dmg_timestamp" || "$dmg_timestamp" == "none" ]]; then
+  print -u2 "The DMG signature does not contain a secure timestamp."
   exit 77
 fi
 

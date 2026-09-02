@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "recordState": "template",
   "product": {
     "name": "PS2 Emu",
@@ -22,6 +22,11 @@
   },
   "sourceBinding": {
     "artifactReportedRevision": null,
+    "authentication": {
+      "method": null,
+      "signerCertificateSha256": null,
+      "signedPayloadCoversFinalArtifact": null
+    },
     "verification": {
       "result": "not-run",
       "notes": null

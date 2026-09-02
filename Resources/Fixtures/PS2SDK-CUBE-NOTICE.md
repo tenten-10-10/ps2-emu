@@ -39,16 +39,28 @@ download or replace this fixture at runtime.
 The Cube sample source identifies:
 
 - Copyright `(c) 2005 Naomi Peori <naomi@peori.ca>`
-- `Licensed under Academic Free License version 2.0`
+- `Licenced under Academic Free License version 2.0`
 - PS2DEV Open Source Project
 
 The installed sample Makefile also identifies copyright `2001-2004, ps2dev`
 and the Academic Free License version 2.0.
 
+The spelling `Licenced` above is preserved from the pinned upstream raw source;
+it was not introduced or corrected by PS2 Emu. The three local source copies
+whose byte identities are listed below are byte-for-byte identical to those
+pinned upstream raw files.
+
 The unmodified upstream AFL 2.0 text is included at
 `Resources/Fixtures/PS2SDK-AFL-2.0.txt`. Its exact source is:
 
 `https://github.com/ps2dev/ps2sdk/blob/39a89923ce59152fa855250cfacaccf8e581a1eb/LICENSE`
+
+That local file is exactly `9005` bytes with SHA-256
+`1ecee940922a6886baccddd9133d17f1ce677d32c5a954fac8e48224f2766fe8`,
+matching the pinned upstream raw `LICENSE` byte-for-byte. This includes the
+upstream U+FFFD replacement character in section 11 (`17 U.S.C. � 101 et
+seq.`). PS2 Emu has not normalized, repaired, or otherwise changed the license
+body.
 
 The corresponding machine-readable source, including the Cube source and the
 ps2sdk libraries linked by the official build, remains available at the exact

@@ -97,7 +97,10 @@ export function sanitizeState(value) {
     if (Object.hasOwn(preferences, "bundledDemoDismissed")) {
       state.preferences.bundledDemoDismissed = preferences.bundledDemoDismissed === true;
     }
-    const bundledDemoTermsRevision = safeString(preferences.bundledDemoTermsRevision, 64);
+    const bundledDemoTermsRevision = safeString(
+      preferences.bundledDemoTermsRevision,
+      BUNDLED_DEMO_TERMS_REVISION.length,
+    );
     state.preferences.bundledDemoTermsRevision = bundledDemoTermsRevision === BUNDLED_DEMO_TERMS_REVISION
       ? bundledDemoTermsRevision
       : null;

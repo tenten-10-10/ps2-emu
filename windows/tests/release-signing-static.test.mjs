@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -61,6 +63,18 @@ test("release signer requires reviewed bytes, source identity, and CurrentUser c
   assert.match(script, /reviewedSourcePackageVersionMatched = \$true/);
   assert.match(script, /Test-ReviewedAppAsar/);
   assert.match(script, /reviewedAppAsarMatchesSource = \$true/);
+  assert.match(script, /cms-signed-release-binding-v1/);
+  assert.match(script, /New-SourceRevisionBindingEvidence/);
+  assert.match(script, /Test-SourceRevisionBindingEvidence/);
+  assert.match(script, /sourceRevisionBindingMatchesFinalZip = \$true/);
+  assert.match(script, /cmsCertificateChainVerified = \$true/);
+  assert.match(script, /rfc3161Timestamped = \$false/);
+  assert.match(script, /sourceBindingIndependentTimestampGatePassed = \$false/);
+  assert.doesNotMatch(script, /PS2EMU-SOURCE-REVISION-V1:|authenticode-covered-pe-overlay-v1/);
+  assert.ok(
+    script.indexOf("$publicZipSha = Get-NormalizedSha256 $publicZipPath") < script.indexOf("$sourceBinding = New-SourceRevisionBindingEvidence"),
+    "CMS sidecar must be created only after the final ZIP hash exists",
+  );
 });
 
 test("release signer performs SHA256 Authenticode and RFC3161 verification without handling certificate secrets", async () => {
@@ -141,4 +155,48 @@ test("release ASAR helper reuses the exact package verifier source allowlist", a
   assert.match(verifier, /export async function verifyReviewedAppAsar/);
   assert.match(verifier, /app\.asar entry does not match the reviewed source bytes/);
   assert.match(verifier, /app\.asar contains entries outside the exact source allowlist/);
+});
+
+test("release evidence requires signature-authenticated source binding", async () => {
+  const validator = await read("../docs/release-evidence/validate-evidence.mjs");
+  const schema = await read("../docs/release-evidence/release-evidence.schema.json");
+  for (const source of [validator, schema]) {
+    assert.match(source, /signedPayloadCoversFinalArtifact/);
+    assert.match(source, /cms-signed-release-binding-v1/);
+    assert.match(source, /signerCertificateSha256/);
+  }
+  assert.match(validator, /CMS signature or signed release binding verification failed/);
+  assert.match(validator, /EXPECTED_WINDOWS_SIGNER_CERT_SHA256/);
+  assert.match(validator, /verifyCmsSignedReleaseBinding/);
+
+  const record = JSON.parse(await read("../docs/release-evidence/templates/0.1.0-windows-x64.template.json"));
+  record.recordState = "completed";
+  record.sourceBinding.authentication.method = "signed-bundle-metadata";
+  record.sourceBinding.authentication.signedPayloadCoversFinalArtifact = false;
+  const directory = await mkdtemp(path.join(os.tmpdir(), "ps2-evidence-binding-test-"));
+  const evidencePath = path.join(directory, "windows-x64.json");
+  try {
+    await writeFile(evidencePath, `${JSON.stringify(record)}\n`);
+    const result = spawnSync(process.execPath, [
+      path.resolve(windowsRoot, "../docs/release-evidence/validate-evidence.mjs"),
+      "--completed",
+      evidencePath,
+    ], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /must equal cms-signed-release-binding-v1 for Windows/);
+    assert.match(result.stderr, /signedPayloadCoversFinalArtifact: must be true for completed evidence/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("public source archive requires the binding implementation, verifier, and tests", async () => {
+  const allowlist = await read("../scripts/public-source-paths.txt");
+  for (const required of [
+    "windows/scripts/lib/source-revision-binding.mjs",
+    "windows/scripts/verify-release-source-binding.mjs",
+    "windows/tests/source-revision-binding.test.mjs",
+  ]) {
+    assert.match(allowlist, new RegExp(`^${required.replaceAll("/", "\\/")}$`, "m"));
+  }
 });

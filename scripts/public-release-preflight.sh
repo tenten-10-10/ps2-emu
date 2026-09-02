@@ -2,6 +2,7 @@
 
 set -u
 set -o pipefail
+caller_path="${PATH:-}"
 PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
 
@@ -13,12 +14,13 @@ bundle_play="${PS2_BUNDLE_PLAY:-1}"
 target_arch="${PS2_TARGET_ARCH:-arm64}"
 app_path="$output_root/PS2 Emu.app"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$project_root/Resources/Info.plist" 2>/dev/null || true)"
-evidence_root="$project_root/docs/release-evidence/$version/$target_arch"
+evidence_validator="$project_root/docs/release-evidence/validate-evidence.mjs"
 failures=()
 passes=()
 inspection_root=""
 inspection_mount=""
 inspection_attached=0
+source_commit=""
 
 cleanup() {
   if (( inspection_attached == 1 )) && [[ -n "$inspection_mount" ]]; then
@@ -194,16 +196,82 @@ else
   fail "Versioned DMG is missing: $dmg_path"
 fi
 
-if [[ -f "$evidence_root/REAL_HARDWARE_TEST.md" ]]; then
-  pass "Real-hardware test evidence exists"
-else
-  fail "Real-hardware controller/audio/save/stop/relaunch evidence is missing"
-fi
+if [[ "$bundle_play" == "0" ]]; then
+  configured_evidence_root="${RELEASE_EVIDENCE_BUNDLE_ROOT:-}"
+  evidence_node="${RELEASE_EVIDENCE_NODE:-}"
+  windows_signer_certificate_sha256="${EXPECTED_WINDOWS_SIGNER_CERT_SHA256:-}"
+  source_binding_openssl="${PS2_OPENSSL_PATH:-/usr/bin/openssl}"
+  if [[ -z "$evidence_node" ]]; then
+    evidence_node="$(PATH="$caller_path" command -v node 2>/dev/null || true)"
+  fi
 
-if [[ -f "$evidence_root/CLEAN_MAC_GATEKEEPER_TEST.md" ]]; then
-  pass "Clean-Mac Gatekeeper evidence exists"
-else
-  fail "Clean-Mac browser-download Gatekeeper evidence is missing"
+  if [[ -z "$configured_evidence_root" ]]; then
+    fail "RELEASE_EVIDENCE_BUNDLE_ROOT is required for external immutable release evidence"
+  elif [[ "$configured_evidence_root" != /* ]]; then
+    fail "RELEASE_EVIDENCE_BUNDLE_ROOT must be an absolute external directory"
+  else
+    evidence_bundle_root="${configured_evidence_root:a}"
+    evidence_bundle_canonical="${configured_evidence_root:A}"
+    project_root_canonical="${project_root:A}"
+    if [[ ! -d "$evidence_bundle_root" || -L "$evidence_bundle_root" ]]; then
+      fail "RELEASE_EVIDENCE_BUNDLE_ROOT is missing, is not a directory, or is a symlink"
+    elif [[ "$evidence_bundle_canonical" == "$project_root_canonical" || "$evidence_bundle_canonical" == "$project_root_canonical"/* ]]; then
+      fail "RELEASE_EVIDENCE_BUNDLE_ROOT must remain outside the Git source repository"
+    elif [[ "$evidence_node" != /* || ! -f "$evidence_node" || ! -x "$evidence_node" || -L "$evidence_node" ]]; then
+      fail "A trusted absolute Node.js executable is required to validate external release evidence"
+    elif ! /usr/bin/grep -Eq '^[0-9a-f]{64}$' <<<"$windows_signer_certificate_sha256"; then
+      fail "EXPECTED_WINDOWS_SIGNER_CERT_SHA256 must pin exactly 64 lowercase hexadecimal characters"
+    elif [[ "$source_binding_openssl" != /* || ! -f "$source_binding_openssl" || ! -x "$source_binding_openssl" || -L "$source_binding_openssl" ]]; then
+      fail "PS2_OPENSSL_PATH must name a trusted absolute regular OpenSSL executable"
+    elif [[ ! -f "$evidence_validator" || -L "$evidence_validator" ]]; then
+      fail "The reviewed release evidence validator is missing or unsafe"
+    else
+      evidence_directory="$evidence_bundle_root/evidence"
+      evidence_files=()
+      if [[ -d "$evidence_directory" && ! -L "$evidence_directory" ]]; then
+        evidence_files=("$evidence_directory"/*.json(N))
+      fi
+      if (( ${#evidence_files} == 0 )); then
+        fail "External release evidence bundle must contain platform JSON records below evidence/"
+      else
+        unsafe_evidence=0
+        for evidence_file in "${evidence_files[@]}"; do
+          if [[ ! -f "$evidence_file" || -L "$evidence_file" ]]; then
+            unsafe_evidence=1
+          fi
+        done
+        if (( unsafe_evidence == 1 )); then
+          fail "External release evidence JSON records must be regular non-symlink files"
+        elif RELEASE_EVIDENCE_BUNDLE_ROOT="$evidence_bundle_root" \
+          EXPECTED_WINDOWS_SIGNER_CERT_SHA256="$windows_signer_certificate_sha256" \
+          PS2_OPENSSL_PATH="$source_binding_openssl" \
+          "$evidence_node" "$evidence_validator" --require-pass "${evidence_files[@]}" >/dev/null 2>&1; then
+          evidence_revision_mismatch=0
+          target_evidence_found=0
+          for evidence_file in "${evidence_files[@]}"; do
+            record_revision="$(/usr/bin/plutil -extract source.revision raw -o - "$evidence_file" 2>/dev/null || true)"
+            record_version="$(/usr/bin/plutil -extract product.version raw -o - "$evidence_file" 2>/dev/null || true)"
+            record_platform="$(/usr/bin/plutil -extract target.platformID raw -o - "$evidence_file" 2>/dev/null || true)"
+            if [[ -z "$source_commit" || "$record_revision" != "$source_commit" || "$record_version" != "$version" ]]; then
+              evidence_revision_mismatch=1
+            fi
+            if [[ "$record_platform" == "macos-$target_arch" ]]; then
+              target_evidence_found=1
+            fi
+          done
+          if (( evidence_revision_mismatch == 1 )); then
+            fail "External release evidence is not bound to this clean source revision and version"
+          elif (( target_evidence_found == 0 )); then
+            fail "External release evidence does not contain the selected macOS architecture"
+          else
+            pass "External immutable four-platform evidence, attachments, artifact bytes, and source binding pass"
+          fi
+        else
+          fail "External immutable release evidence failed validate-evidence --require-pass"
+        fi
+      fi
+    fi
+  fi
 fi
 
 if [[ -f "$project_root/site/dist/index.html" ]]; then
